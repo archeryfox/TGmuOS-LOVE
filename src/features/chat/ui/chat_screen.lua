@@ -338,6 +338,8 @@ function messenger_screen:draw()
         ui.text("Подключено", w - 30 - settings_btn_w - 90, 18, f.normal, colors.muted)
     end
 
+    self:draw_loading_indicator(f, colors, w, left_width, right_width)
+
     self:draw_chat_list(left_width, h)
 
     local chat = self.model:current_chat()
@@ -695,6 +697,66 @@ function messenger_screen:chat_context_menu_items(chat)
         {label = muted and "Размутить" or "Замутить навсегда", action = muted and "unmute_chat" or "mute_chat"},
         {label = is_archived and "Вернуть из архива" or "Отправить в архив", action = is_archived and "unarchive_chat" or "archive_chat"},
     }
+end
+
+function messenger_screen:is_loading()
+    -- Chats list still loading (no chat selected yet)
+    if not self.tg.current_chat_id and not self.tg.chats_loaded then
+        return true
+    end
+    -- Current chat history loading
+    local chat = self.model:current_chat()
+    if chat then
+        local hs = self.tg.history_state and self.tg.history_state[chat.id]
+        if hs and hs.loading then return true end
+    end
+    -- Filter folder loading
+    if self.list_kind == "filter" and self.list_filter_id
+        and self.tg.filter_load_pending[self.list_filter_id] then
+        return true
+    end
+    -- Archive loading
+    if self.list_kind == "archive" and not self.tg.archive_loaded then
+        return true
+    end
+    -- Search loading
+    if self.search_active and self.search_query ~= "" then
+        if self.tg.dialog_search_query and self.tg.dialog_search_query[chat and chat.id or 0]
+            and self.tg.dialog_search_query[chat and chat.id or 0] ~= self.search_query then
+            return true
+        end
+    end
+    return false
+end
+
+function messenger_screen:draw_loading_indicator(f, colors, w, left_width, right_width)
+    if not self:is_loading() then return end
+    local now = love.timer.getTime()
+    local bar_w = math.min(w - 40, 500)
+    local bar_x = (w - bar_w) / 2
+    local bar_y = HEADER_HEIGHT + 8
+    local bar_h = 5
+
+    -- Label
+    local label = "Загрузка..."
+    ui.text(label, bar_x, bar_y - f.tiny:getHeight() - 2, f.tiny, colors.muted)
+
+    -- Background track
+    love.graphics.setColor(colors.header[1], colors.header[2], colors.header[3], 0.25)
+    love.graphics.rectangle("fill", bar_x, bar_y, bar_w, bar_h, 2)
+
+    -- Animated fill (ping-pong)
+    local fill_w = bar_w * 0.5
+    local cycle = (now * 1.5) % 2
+    local progress
+    if cycle < 1 then
+        progress = cycle
+    else
+        progress = 2 - cycle
+    end
+    local draw_w = fill_w * progress
+    love.graphics.setColor(colors.accent[1], colors.accent[2], colors.accent[3], 0.9)
+    love.graphics.rectangle("fill", bar_x, bar_y, draw_w, bar_h, 2)
 end
 
 function messenger_screen:draw_chat_list(left_width, h)
