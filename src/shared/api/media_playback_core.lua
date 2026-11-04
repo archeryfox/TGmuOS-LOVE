@@ -16,6 +16,7 @@ return function(telegram)
     function telegram:media_entry(kind, file_id)
         if kind == "animation" then return self.animations[file_id] end
         if kind == "video" then return self.videos[file_id] end
+        if kind == "video_note" then return self.video_notes[file_id] end
         if kind == "sticker" then return self.stickers[file_id] end
         if kind == "voice" then return self.voice_notes[file_id] end
         if kind == "audio" then return self.audios[file_id] end

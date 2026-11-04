@@ -745,7 +745,7 @@ function telegram:handle_file(file)
         elseif self.videos[file_id] then
             self:load_video(file_id, file_local.path)
         elseif self.video_notes[file_id] then
-            entry.status = "downloaded"
+            self:load_video_note(file_id, file_local.path)
         elseif self.voice_notes[file_id] then
             self:load_voice_note(file_id, file_local.path)
         elseif self.audios[file_id] then
@@ -758,6 +758,8 @@ function telegram:handle_file(file)
         if entry.autoplay then
             if self.videos[file_id] then
                 self:queue_media_decode("video", file_id, file_local.path)
+            elseif self.video_notes[file_id] then
+                self:queue_media_decode("video_note", file_id, file_local.path, false)
             elseif self.voice_notes[file_id] then
                 self:queue_audio_decode("voice", file_id, file_local.path, entry.duration)
             elseif self.audios[file_id] then

@@ -24,6 +24,8 @@ _in progress_
   1. **Выбор\отправление стикеров**
   2. Переход на полный стикерпак
 - Функция Обновления клиента (через внешний репозиторий)
+- Markdown basic render in messages
+- ultra-Basic webView
 
 
 ## _UI-fixes_

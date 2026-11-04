@@ -650,24 +650,8 @@ function messenger_screen:draw_edit_overlay(f, colors, w, h)
 end
 
 function messenger_screen:context_menu_items(message)
-    local items = {
-        {label = "Копировать", action = "copy"},
-        {label = "Реакция", action = "react"},
-        {label = "Переслать", action = "forward"},
-        {label = message.is_pinned and "Открепить" or "Закрепить", action = message.is_pinned and "unpin" or "pin"},
-        {label = "Удалить для меня", action = "delete"},
-        {label = "Удалить для всех", action = "delete_all"},
-    }
-    -- "Write to author" for non-outgoing messages
-    if not self:outgoing(message) then
-        local sender = message.sender_id
-        if sender and sender["@type"] == "messageSenderUser" then
-            table.insert(items, {label = "Написать ему", action = "write_to_author", sender_id = sender.user_id})
-        end
-    end
-    if self:outgoing(message) and message.content and message.content["@type"] == "messageText" then
-        table.insert(items, {label = "Редактировать", action = "edit"})
-    end
+    local items = {}
+    -- "Воспроизвести" — всегда первым для медиасообщений
     local _, _, entry = self.tg:media_file_for_message(message)
     if entry then
         local sticker = self.tg:choose_sticker_size(message)
@@ -683,6 +667,22 @@ function messenger_screen:context_menu_items(message)
             items[#items + 1] = {label = is_tgs and "Загрузить, конвертировать и воспроизвести"
                 or "Загрузить и воспроизвести", action = "play_media"}
         end
+    end
+    items[#items + 1] = {label = "Копировать", action = "copy"}
+    items[#items + 1] = {label = "Реакция", action = "react"}
+    items[#items + 1] = {label = "Переслать", action = "forward"}
+    items[#items + 1] = {label = message.is_pinned and "Открепить" or "Закрепить", action = message.is_pinned and "unpin" or "pin"}
+    items[#items + 1] = {label = "Удалить для меня", action = "delete"}
+    items[#items + 1] = {label = "Удалить для всех", action = "delete_all"}
+    -- "Write to author" for non-outgoing messages
+    if not self:outgoing(message) then
+        local sender = message.sender_id
+        if sender and sender["@type"] == "messageSenderUser" then
+            items[#items + 1] = {label = "Написать ему", action = "write_to_author", sender_id = sender.user_id}
+        end
+    end
+    if self:outgoing(message) and message.content and message.content["@type"] == "messageText" then
+        items[#items + 1] = {label = "Редактировать", action = "edit"}
     end
     return items
 end

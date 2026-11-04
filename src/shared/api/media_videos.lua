@@ -180,6 +180,13 @@ return function(telegram)
         self:queue_media_decode("video", file_id, path, not entry.autoplay)
     end
 
+    function telegram:load_video_note(file_id, path)
+        local entry = self.video_notes[file_id]
+        if not entry then return end
+        entry.source_path = path
+        self:queue_media_decode("video_note", file_id, path, not entry.autoplay)
+    end
+
     function telegram:load_animation(file_id, path)
         local entry = self.animations[file_id]
         if not entry then return end
