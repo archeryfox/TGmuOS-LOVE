@@ -12,10 +12,10 @@ function media_renderer.draw(ms, w, h)
     if not fullscreen then return end
     local image
     local media_index = fullscreen.media_index or 1
-    if fullscreen.kind == "video" then
-        image = ms.tg:video_image(fullscreen.message)
-    elseif fullscreen.kind == "video_note" then
+    if fullscreen.video_note then
         image = ms.tg:video_note_image(fullscreen.message)
+    elseif fullscreen.kind == "video" then
+        image = ms.tg:video_image(fullscreen.message)
     else
         image = ms.tg:photo_image(fullscreen.message, media_index)
     end

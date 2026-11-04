@@ -111,8 +111,15 @@ return function(telegram)
     end
 
     function telegram:video_image(message)
-        local file_id = self.video_by_message[message.id]
-        local entry = file_id and self.videos[file_id]
+        local content = message and message.content or {}
+        local file_id, entry
+        if content["@type"] == "messageVideoNote" then
+            file_id = self.video_note_by_message and self.video_note_by_message[message.id]
+            entry = file_id and self.video_notes[file_id]
+        else
+            file_id = self.video_by_message[message.id]
+            entry = file_id and self.videos[file_id]
+        end
         if entry then
             local image = entry.image
             if entry.frames and #entry.frames > 0 then
