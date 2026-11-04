@@ -920,13 +920,6 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
                 is_animation = true
             end
         end
-        if not image then
-            local vimg, vw, vh, vlabel = self:video_geometry(message, max_bubble, padding)
-            if vimg then
-                image, image_width, image_height, video_label = vimg, vw, vh, vlabel
-                is_video = true
-            end
-        end
         local height
         if image then
             local caption = (is_sticker or is_animation or is_video) and "" or self:photo_caption(message)

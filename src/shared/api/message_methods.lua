@@ -1,5 +1,5 @@
 local json = require("dkjson")
-local HISTORY_PAGE_SIZE = 50
+local HISTORY_PAGE_SIZE = 10
 
 return function(telegram)
     function telegram:message_text(message)

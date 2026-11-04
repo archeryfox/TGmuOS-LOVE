@@ -222,8 +222,8 @@ return function(telegram)
         self:send({
             ["@type"] = "loadChats",
             chat_list = {["@type"] = "chatListFilter", chat_filter_id = filter_id},
-            limit = 100,
-        }, "loadFilterChats:" .. tostring(filter_id))
+        limit = 15,
+    }, "loadFilterChats:" .. tostring(filter_id))
     end
 
     function telegram:load_archive_chats()
@@ -240,8 +240,8 @@ return function(telegram)
         self:send({
             ["@type"] = "loadChats",
             chat_list = {["@type"] = "chatListArchive"},
-            limit = 100,
-        }, "loadArchiveChats")
+        limit = 15,
+    }, "loadArchiveChats")
     end
 
     function telegram:search_chats(query)

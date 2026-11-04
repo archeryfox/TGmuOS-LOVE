@@ -939,7 +939,7 @@ function telegram:handle_authorization(state)
         self:send({
             ["@type"] = "loadChats",
             chat_list = {["@type"] = "chatListMain"},
-            limit = 100,
+            limit = 15,
         }, "loadChats")
         if self.on_ready then
             self.on_ready()

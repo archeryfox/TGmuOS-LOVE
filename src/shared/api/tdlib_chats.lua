@@ -24,7 +24,7 @@ function tdlib_chats.load_chats_for_mode(tdlib)
     tdlib:send({
         ["@type"] = "loadChats",
         chat_list = list,
-        limit = 100,
+        limit = 15,
     }, "loadChats")
 end
 
