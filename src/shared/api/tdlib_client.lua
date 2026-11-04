@@ -674,7 +674,6 @@ function telegram:handle(object)
             end
         end
         if object.code == 401 then
-            love.log.warn("TDLib", "Unauthorized code=" .. tostring(object.code) .. " extra=" .. tostring(object["@extra"] or "") .. " message=" .. message)
             log_to_file(self, string.format("TDLib 401 unauthorized: extra=%s message=%s", tostring(object["@extra"] or ""), message))
             if self.auth_state ~= "authorizationStateWaitPhoneNumber" and not self.logout_pending then
                 self.auth_error = message
