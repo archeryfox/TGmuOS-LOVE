@@ -1,0 +1,20 @@
+# Secrets and private configs
+telegram.conf
+*.conf
+proxy.conf
+mtproto.conf
+
+# Logs
+*.log
+log.txt
+
+# TDLib database
+data/tdlib*
+data/tdlib/
+
+# Build artifacts
+dist/*.zip
+dist/*.muxzip
+
+# Kilo agent state
+.kilo/

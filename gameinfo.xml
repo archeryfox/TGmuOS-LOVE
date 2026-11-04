@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gameList>
+  <game>
+    <path>./mux_launch.sh</path>
+    <name>Telegram (LÖVE)</name>
+    <desc>TGMUOS port to LÖVE 11.5 - just app, no VPN</desc>
+    <releasedate>20261029T000000</releasedate>
+    <developer>tgmuos</developer>
+    <genre>App</genre>
+  </game>
+</gameList>
