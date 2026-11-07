@@ -263,6 +263,16 @@ function love.load()
 
     start_account()
 
+    -- VPN status worker thread
+    vpn_thread = love.thread.newThread("threads/vpn_status_worker.lua")
+    vpn_in = love.thread.getChannel("vpn_status_in")
+    vpn_out = love.thread.getChannel("vpn_status_out")
+    vpn_thread:start({
+        config_dir = "/mnt/mmc/MUOS/application/muvpn_love",
+        python = "/mnt/mmc/MUOS/PortMaster/runtimes/python/bin/python3",
+        script = "/mnt/mmc/MUOS/application/muvpn_love/muvpn.py",
+    })
+
     screens = {
         auth = auth_screen.new(fonts, tg),
         messenger = messenger_screen.new(fonts, tg),
@@ -282,6 +292,14 @@ function love.load()
                 end
                 os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
                 if callback then callback() end
+            end,
+            get_vpn_status = function()
+                vpn_in:push("probe")
+                local snap = vpn_out:pop()
+                if snap and snap.status then
+                    return snap.status.connected and "Включен" or "Выключен"
+                end
+                return "Неизвестно"
             end,
         }),
         controls = controls_screen.new(fonts, tg),

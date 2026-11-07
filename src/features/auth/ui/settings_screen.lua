@@ -200,8 +200,9 @@ local is_abxy = item.id == "abxy"
                 love.graphics.setLineWidth(1)
                 ui.text("VPN перезапуск...", 60, y + 7, f.small, colors.text)
             else
+                local vpn_status = self.callbacks.get_vpn_status and self.callbacks.get_vpn_status() or "—"
                 ui.text("VPN / Прокси", 60, y + 7, f.normal, colors.text)
-                ui.text("A — перезапустить", w - 180, y + 7, f.small, colors.muted)
+                ui.text(vpn_status .. "   A — перезапустить", w - 180, y + 7, f.small, colors.muted)
             end
             self.vpn_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_tg_push then
