@@ -16,4 +16,4 @@
 
 - [x] `HISTORY_PAGE_SIZE` увеличен с 10 до 50 в `src/shared/api/message_methods.lua` — меньше круговых запросов TDLib при загрузке истории, чаты с большой историей грузятся быстрее.
 - [x] `MAX_MESSAGES_PER_CHAT = 500` с авто-обрезкой (`prune_messages`) в `message_methods.lua` — предотвращает неограниченный рост `self.messages[chat_id]` на длинных диалогах, снижает потребление памяти.
-- [ ] Рассмотреть Downscaling oversized фото/стикеров в `media_conversion.lua:load_image()` (макс. сторона 1024) — снизить расход VRAM на устройстве.
+- [x] Рассмотреть Downscaling oversized фото/стикеров в `media_conversion.lua:load_image()` (макс. сторона 1024) — снизить расход VRAM на устройстве.

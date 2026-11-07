@@ -150,6 +150,23 @@ return function(telegram)
             entry.status = "error"
             return
         end
+        -- Downscale oversized images to max side 1024 to reduce VRAM usage
+        local max_side = 1024
+        local iw, ih = image_data:getWidth(), image_data:getHeight()
+        if math.max(iw, ih) > max_side then
+            local scale = max_side / math.max(iw, ih)
+            local nw, nh = math.max(1, math.floor(iw * scale)), math.max(1, math.floor(ih * scale))
+            local ok_s, scaled = pcall(function()
+                local canvas = love.graphics.newCanvas(nw, nh)
+                local img = love.graphics.newImage(image_data)
+                love.graphics.setCanvas(canvas)
+                love.graphics.clear(0, 0, 0, 0)
+                love.graphics.draw(img, 0, 0, 0, scale, scale)
+                love.graphics.setCanvas()
+                return canvas:newImageData()
+            end)
+            if ok_s and scaled then image_data = scaled end
+        end
         local ok3, image = pcall(love.graphics.newImage, image_data)
         if not ok3 or not image then
             entry.status = "error"
