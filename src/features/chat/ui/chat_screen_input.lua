@@ -742,13 +742,13 @@ self.fullscreen_zoom = 1
 
         if self.tg.current_chat_id then
             if key == "up" then
-                self:scroll_chat(-1)
-            elseif key == "down" then
-                self:scroll_chat(1)
-            elseif key == "left" then
                 self:move_message_cursor(-1)
-            elseif key == "right" then
+            elseif key == "down" then
                 self:move_message_cursor(1)
+            elseif key == "left" then
+                self:scroll_chat(-1)
+            elseif key == "right" then
+                self:scroll_chat(1)
             elseif key == "pageup" then
                 local step = (self.conv_area_h or 300) * 0.9
                 self.model.scroll = math.min(self.model.max_scroll, self.model.scroll + step)

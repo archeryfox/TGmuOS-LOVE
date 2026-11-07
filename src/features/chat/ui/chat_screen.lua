@@ -391,7 +391,7 @@ function messenger_screen:update(dt)
     if self.smooth_scroll == nil or math.abs(target_scroll - self.smooth_scroll) > 2000 then
         self.smooth_scroll = target_scroll
     end
-    local factor = 1 - math.exp(-performance.smooth_speed() * dt)
+    local factor = 1
     self.smooth_scroll = self.smooth_scroll + (target_scroll - self.smooth_scroll) * factor
     if math.abs(target_scroll - self.smooth_scroll) < 0.5 then
         self.smooth_scroll = target_scroll
