@@ -36,17 +36,6 @@ local helpers = require("src.features.chat.ui.chat_screen_helpers")
 local wrapped_lines = helpers.wrapped_lines
 local draw_circle_image = helpers.draw_circle_image
 local draw_text_lines = helpers.draw_text_lines
-local function strip_markdown(t)
-  if not t then return '' end
-  t = t:gsub('```[^`]*```', function(c) return c:gsub('```', '') end)
-  t = t:gsub('`([^`]*)`', '%1')
-  t = t:gsub('%*%*([^*]*)%*%*', '%1')
-  t = t:gsub('%*([^*]*)%*', '%1')
-  t = t:gsub('__([^_]*)__', '%1')
-  t = t:gsub('_([^_]*)_', '%1')
-  t = t:gsub('~~([^~]*)~~', '%1')
-  return t
-end
 local conversation_items = helpers.conversation_items
 
 function messenger_screen.new(fonts, tg)
@@ -1212,7 +1201,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
     )
     local reactions_height = #reactions * 22
     local is_document = (content_type == "messageDocument" or content_type == "messageAudio") and not is_sticker_like_doc
-    local display_text = is_document and self.tg:document_label(message) or strip_markdown(text)
+    local display_text = is_document and self.tg:document_label(message) or text
     if not image then
         local simg, sw, sh, semoji = self:sticker_geometry(message, max_bubble, padding)
         if simg then
