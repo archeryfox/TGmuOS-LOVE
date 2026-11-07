@@ -9,6 +9,7 @@ function chats.new(fonts)
     self.selected = 1
     self.chats = {}
     self.scrollOffset = 0
+    self.folder = "main"  -- main | archive
     return self
 end
 
@@ -16,11 +17,14 @@ function chats:enter()
     self.chats = {}
     self.selected = 1
     self.scrollOffset = 0
+    self:load_folder()
+end
+
+function chats:load_folder()
     if _G.tg then
-        self.chats = _G.tg.chats or {}
-        if #self.chats == 0 then
-            _G.tg:send({["@type"] = "getChats", chat_list = {["@type"] = "chatListMain"}, limit = 50})
-        end
+        self.chats = {}
+        local list_type = self.folder == "archive" and "chatListArchive" or "chatListMain"
+        _G.tg:send({["@type"] = "getChats", chat_list = {["@type"] = list_type}, limit = 50})
     end
 end
 
@@ -38,7 +42,7 @@ function chats:draw()
     
     ui.rect(0, 0, 640, 48, COLORS.header)
     ui.drawText("Chats", 16, 12, f.subtitle, COLORS.text)
-    ui.drawText("All", 580, 14, f.small, COLORS.accent)
+    ui.drawText(self.folder == "archive" and "Архив" or "Все", 560, 14, f.small, COLORS.accent)
     
     local visible = math.floor((480 - 60 - 40) / 64)
     local startIdx = 1
@@ -113,7 +117,7 @@ function chats:draw()
         ui.drawText("Loading...", 16, 120, f.small, COLORS.muted)
     end
     
-    ui.drawText("[A] Open  [SELECT] Settings  [START] Exit", 16, 450, f.tiny, COLORS.muted)
+    ui.drawText("[A] Open  [←/→] Папки  [SELECT] Settings  [START] Exit", 16, 450, f.tiny, COLORS.muted)
 end
 
 function chats:keypressed(key)
@@ -121,6 +125,16 @@ function chats:keypressed(key)
         self.selected = math.max(1, self.selected - 1)
     elseif key == "down" then
         self.selected = math.min(#self.chats, self.selected + 1)
+    elseif key == "left" or key == "l2" then
+        self.folder = "main"
+        self.selected = 1
+        self.scrollOffset = 0
+        self:load_folder()
+    elseif key == "right" or key == "r2" then
+        self.folder = "archive"
+        self.selected = 1
+        self.scrollOffset = 0
+        self:load_folder()
     elseif key == "space" then
         local idx = self.selected + self.scrollOffset
         local chat = self.chats[idx]
