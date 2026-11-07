@@ -60,6 +60,20 @@ return function(messenger_screen, layout)
         self:ensure_message_visible(nav[index].id)
     end
 
+    function messenger_screen:scroll_chat(dir)
+        local now = love.timer.getTime()
+        local base = 25
+        if self.scroll_dir == dir and self.scroll_hold_start then
+            local hold = now - self.scroll_hold_start
+            local accel = math.min(1 + hold * 4, 12)
+            base = base * accel
+        else
+            self.scroll_dir = dir
+            self.scroll_hold_start = now
+        end
+        self.model.scroll = math.max(0, math.min(self.model.max_scroll or 0, (self.model.scroll or 0) + base * dir))
+    end
+
     function messenger_screen:keyboard_preview()
         if self.edit_mode then
             return "Редактирование: " .. (self.edit_input or "")
@@ -310,15 +324,21 @@ self.fullscreen_zoom = 1
         elseif item.action == "view_fullscreen" then
             local msg = cm.message
             local kind = "photo"
+            local media_index = 1
             if msg and msg.content then
                 local ct = msg.content["@type"]
                 if ct == "messageVideo" then kind = "video"
                 elseif ct == "messageVideoNote" then kind = "video_note"
                 elseif ct == "messageSticker" then kind = "sticker"
                 elseif ct == "messageAnimation" then kind = "animation"
+                elseif ct == "messagePhoto" then
+                    local photos = msg.content.photos
+                    if photos and #photos > 0 then
+                        media_index = #photos
+                    end
                 end
             end
-            self.fullscreen_media = {message = msg, video_note = (kind == "video_note"), kind = kind}
+            self.fullscreen_media = {message = msg, video_note = (kind == "video_note"), kind = kind, media_index = media_index}
             self.fullscreen_zoom = 1
             self.fullscreen_pan_x = 0
             self.fullscreen_pan_y = 0
@@ -676,13 +696,13 @@ self.fullscreen_zoom = 1
 
         if self.tg.current_chat_id then
             if key == "up" then
-                self:move_message_cursor(-1)
+                self:scroll_chat(-1)
             elseif key == "down" then
-                self:move_message_cursor(1)
+                self:scroll_chat(1)
             elseif key == "left" then
-                self:move_message_cursor(-5)
+                self:move_message_cursor(-1)
             elseif key == "right" then
-                self:move_message_cursor(5)
+                self:move_message_cursor(1)
             elseif key == "pageup" then
                 local step = (self.conv_area_h or 300) * 0.9
                 self.model.scroll = math.min(self.model.max_scroll, self.model.scroll + step)
@@ -1064,6 +1084,9 @@ self.fullscreen_zoom = 1
             self.r2_pressed = false
         elseif key == "l2" then
             self.l2_pressed = false
+        elseif key == "up" or key == "down" then
+            self.scroll_dir = nil
+            self.scroll_hold_start = nil
         end
     end
 end

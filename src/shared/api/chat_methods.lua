@@ -99,7 +99,12 @@ return function(telegram)
         end
         chat.last_message = update.last_message
         if update.last_message and update.last_message.date then
-            chat.unread_count = 0
+            -- Сбрасываем unread только если чат открыт; иначе считаем непрочитанным
+            if self.current_chat_id ~= update.chat_id then
+                chat.unread_count = (chat.unread_count or 0) + 1
+            else
+                chat.unread_count = 0
+            end
         end
         self:rebuild_chats()
         self:rebuild_filter_chats()

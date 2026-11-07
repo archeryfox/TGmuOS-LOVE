@@ -75,3 +75,53 @@ validate Telegram login on the target device.
 Build a distributable muOS ZIP from the project root with
 `./build_muOS.sh`; the archive contains only runtime files and does not include
 the legacy mock entry point or local account/session data.
+
+## Tools (`tools/`)
+
+| Tool | Description |
+| ---- | ----------- |
+| `monitor.sh` | **Крутой инструмент мониторинга** в реальном времени для Telegram клиента на Anbernic RG35XX SP. Показывает процессы (Telegram, LÖVE, sing-box), потребление памяти/CPU, состояние TDLib авторизации, последнии логи, сетевое соединение и прокси. Запуск: `./tools/monitor.sh` локально на устройстве или `ssh root@DEVICE "./tools/monitor.sh"` удалённо. Опции: `--once`, `--interval N`, `--follow`. |
+| `tgkill.sh` / `tgclose.sh` | Жёсткая остановка Telegram клиента и связанных процессов. |
+| `ssh_tgkill.sh` | Убить Telegram на удалённом устройстве по SSH. |
+
+### Пример вывода `monitor.sh`
+
+```
+===============================================================================
+  TGmuOS MONITOR  —  2026-11-07 08:15:32
+===============================================================================
+
+--- PROCESSES ---
+root      1234  0.0  2.1  54321  12345 ?        S    08:10   0:00 love Telegram
+root      1235  0.5  1.2  23456   5432 ?        S    08:10   0:00 sing-box
+Telegram PID: 1234
+VmRSS:    45672 kB
+VmSize:   89012 kB
+Threads:  8
+State:    S (sleeping)
+
+--- MEMORY ---
+              total        used        free      shared  buff/cache   available
+Mem:           256M        120M         40M         10M         96M         110M
+
+--- TDLIB AUTH STATE ---
+authorizationStateWaitPhoneNumber
+WaitPhoneNumber: введите номер телефона
+
+--- NETWORK & PROXY ---
+inet 192.168.0.151/24 brd 192.168.0.255 scope global wlan0
+Telegram API: 200
+Via Proxy: 200
+
+--- CONFIG ---
+api_id=123456
+api_hash=...
+environment=production
+
+--- RECENT LOGS (последние 12 строк) ---
+[TDLib] Received updateAuthorizationState
+[TDLib] Sending code to ...
+...
+
+Нажмите Ctrl+C для остановки | интервал: 2s
+```

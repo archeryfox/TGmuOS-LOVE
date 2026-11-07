@@ -82,6 +82,8 @@ function messenger_screen.new(fonts, tg)
     self.fullscreen_pan_y = 0
     self.notification_timer = nil
     self.smooth_scroll = 0
+    self.scroll_dir = nil
+    self.scroll_hold_start = nil
     self.menu_anim = 1
     return setmetatable(self, {__index = messenger_screen})
 end
@@ -301,18 +303,12 @@ function messenger_screen:update(dt)
     -- Hold-to-scroll: while nav keys are held, accumulate scroll deltas
     local held_keys = {}
     if self.tg and love and love.keyboard and love.keyboard.isDown then
-        if love.keyboard.isDown("up") then held_keys[#held_keys + 1] = "up" end
-        if love.keyboard.isDown("down") then held_keys[#held_keys + 1] = "down" end
         if love.keyboard.isDown("left") then held_keys[#held_keys + 1] = "left" end
         if love.keyboard.isDown("right") then held_keys[#held_keys + 1] = "right" end
         if love.keyboard.isDown("pageup") then held_keys[#held_keys + 1] = "pageup" end
         if love.keyboard.isDown("pagedown") then held_keys[#held_keys + 1] = "pagedown" end
     end
-    if held_keys[1] == "up" and self.tg.current_chat_id then
-        self.smooth_scroll = math.max(0, (self.smooth_scroll or 0) - 48 * dt)
-    elseif held_keys[1] == "down" and self.tg.current_chat_id then
-        self.smooth_scroll = (self.smooth_scroll or 0) + 48 * dt
-    elseif held_keys[1] == "pageup" and self.tg.current_chat_id then
+    if held_keys[1] == "pageup" and self.tg.current_chat_id then
         local step = (self.conv_area_h or 300) * 0.9
         self.smooth_scroll = math.min(self.model.max_scroll or 0, (self.smooth_scroll or 0) + step * dt)
     elseif held_keys[1] == "pagedown" and self.tg.current_chat_id then
@@ -706,10 +702,13 @@ function messenger_screen:context_menu_items(message)
 
     -- "Скачать в hi-res" — для фото загружает最高 разрешение
     if content_type == "messagePhoto" then
-        local hi = self:choose_photo_hires and self:choose_photo_hires(message)
+        local hi = self.tg and self.tg:choose_photo_hires(message)
         if hi and hi.photo and hi.photo.id then
             local entry = self.photos and self.photos[hi.photo.id]
-            local is_downloaded = entry and entry.source_path and entry.source_path ~= ""
+            local is_downloaded = false
+            if entry ~= nil and entry.source_path ~= nil and entry.source_path ~= "" then
+                is_downloaded = true
+            end
             if is_downloaded then
                 items[#items + 1] = {label = "Уже загружено", action = nil}
             else

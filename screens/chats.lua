@@ -60,7 +60,7 @@ function chats:draw()
         if count >= visible then break end
         local chat = self.chats[i]
         local isSel = (i - self.scrollOffset) == self.selected
-        local drawY = y + (i - 1 - self.scrollOffset) * 64
+        local drawY = y + (i - 1 - self.scrollOffset) * 64 + 4
         
         local name = chat.title or chat.first_name or chat.last_name or "Unknown"
         if chat.first_name and chat.last_name then

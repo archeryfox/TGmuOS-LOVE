@@ -1,5 +1,17 @@
 local json = require("dkjson")
-local HISTORY_PAGE_SIZE = 10
+local HISTORY_PAGE_SIZE = 50
+local MAX_MESSAGES_PER_CHAT = 500
+
+local function prune_messages(chat_id, self_ref)
+    local list = self_ref.messages[chat_id]
+    if not list or #list <= MAX_MESSAGES_PER_CHAT then return end
+    local keep = MAX_MESSAGES_PER_CHAT
+    local pruned = {}
+    for i = #list - keep + 1, #list do
+        if i >= 1 then pruned[#pruned + 1] = list[i] end
+    end
+    self_ref.messages[chat_id] = pruned
+end
 
 return function(telegram)
     function telegram:message_text(message)
@@ -484,6 +496,7 @@ return function(telegram)
                 return (a.id or 0) < (b.id or 0)
             end)
             self.messages[message.chat_id] = list
+            prune_messages(message.chat_id, self)
             self:mark_chat_viewed(message.chat_id, {message})
         end
 

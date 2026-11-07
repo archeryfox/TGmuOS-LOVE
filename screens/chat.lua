@@ -9,6 +9,7 @@ function chat.new(fonts)
     self.messages = {}
     self.input = ""
     self.scroll = 0
+    self.cursor = 1
     self.showKeyboard = false
     self.chatTitle = "Chat"
     self.chatId = nil
@@ -51,8 +52,14 @@ function chat:draw()
     ui.drawText("< " .. self.chatTitle, 16, 12, f.normal, COLORS.text)
     
     local y = 60
+    local visible = 0
     for i, msg in ipairs(self.messages) do
+        if i <= self.scroll then goto continue end
         if y > 420 then break end
+        visible = visible + 1
+        if i == self.cursor then
+            ui.rect(10, y-2, 620, 44, {0.3, 0.5, 0.9, 0.3})
+        end
         local isOutgoing = (msg.sender_user_id and _G.tg and msg.sender_user_id == _G.tg.me_id) or (msg.from == "me")
         
         if not isOutgoing then
@@ -68,6 +75,7 @@ function chat:draw()
             ui.drawText(os.date("%H:%M", date), 588, y+26, f.tiny, COLORS.text)
             y = y + 50
         end
+        ::continue::
     end
     
     ui.rect(0, 420, 640, 60, COLORS.header)
@@ -81,11 +89,17 @@ function chat:draw()
         ui.drawText("[Keyboard]", 16, 290, f.tiny, COLORS.muted)
     end
     
-    ui.drawText("[A] Send  [X] Keyboard  [B] Back", 16, 450, f.tiny, COLORS.muted)
+    ui.drawText("[A] Send  [X] Keyboard  [Up/Down] Scroll  [B] Back", 16, 450, f.tiny, COLORS.muted)
 end
 
 function chat:keypressed(key)
-    if key == "backspace" then
+    if key == "up" then
+        self.cursor = math.max(1, self.cursor - 1)
+        if self.cursor < self.scroll + 1 then self.scroll = self.cursor - 1 end
+    elseif key == "down" then
+        self.cursor = math.min(#self.messages, self.cursor + 1)
+        if self.cursor > self.scroll + 6 then self.scroll = self.cursor - 6 end
+    elseif key == "backspace" then
         if self.input == "" then
             switchScreen("chats")
         else

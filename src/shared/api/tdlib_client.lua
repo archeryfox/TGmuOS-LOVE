@@ -106,6 +106,7 @@ function telegram.new()
     self.notifications = {}
 
     self.on_ready = nil
+    self.proxy_wait_start = nil
     return self
 end
 
@@ -161,24 +162,8 @@ function telegram:start(options)
         self.proxy_added = true
         log_to_file(self, "TDLib: adding proxy...")
         self:add_proxy(options.proxy)
-        log_to_file(self, "TDLib: proxy added, waiting 2s for TDLib to process...")
-        love.timer.sleep(2)
-        if not self.proxy_confirmed then
-            self.proxy_confirmed = true
-            log_to_file(self, "TDLib: proxy confirmed via fallback (2s sleep)")
-        end
-        -- Wait for proxy to be confirmed BEFORE any TDLib requests
-        local start_wait = love.timer.getTime()
-        while not self.proxy_confirmed and love.timer.getTime() - start_wait < 20 do
-            self:poll()
-            love.timer.sleep(0.1)
-        end
-        if not self.proxy_confirmed then
-            self.auth_error = "Proxy connection timeout on startup"
-            log_to_file(self, "TDLib: proxy connection timeout on startup")
-        else
-            log_to_file(self, "TDLib: proxy confirmed ready on startup")
-        end
+        log_to_file(self, "TDLib: proxy added, waiting for confirmation...")
+        self.proxy_wait_start = love.timer.getTime()
     end
 end
 
@@ -388,6 +373,17 @@ end
 
 function telegram:update(dt)
     self:poll()
+    -- Proxy confirmation waits asynchronously (non-blocking)
+    if self.proxy_wait_start and not self.proxy_confirmed then
+        if love.timer.getTime() - self.proxy_wait_start >= 2 then
+            -- Fallback: force-confirm proxy after 2s if TDLib hasn't responded
+            self.proxy_confirmed = true
+            self.proxy_ready = true
+            self.auth_error = ""
+            self.proxy_wait_start = nil
+            log_to_file(self, "TDLib: proxy confirmed via fallback (2s)")
+        end
+    end
     self:poll_media_decoder()
     local now = love.timer.getTime()
     for index = #self.notifications, 1, -1 do
@@ -449,6 +445,11 @@ end
 
 function telegram:handle(object)
     local kind = object["@type"]
+    if kind == "love_log" then
+        log_to_file(self, "worker: " .. tostring(object.message))
+        return
+    end
+
 
     if kind == "updateAuthorizationState" then
         self:handle_authorization(object.authorization_state or {})
@@ -515,6 +516,7 @@ function telegram:handle(object)
     elseif kind == "updateDeleteMessages" then
         self:handle_delete_messages(object)
     elseif kind == "proxy" then
+        log_to_file(self, "handle: received proxy update, extra=" .. tostring(object["@extra"]))
         if object["@extra"] == "proxy" then
             self.proxy_ready = true
             self.proxy_confirmed = true
@@ -1069,37 +1071,10 @@ function telegram:handle_authorization(state)
     self.auth_state = kind
 
     if kind == "authorizationStateWaitTdlibParameters" then
-        -- Proxy should already be confirmed from start()
-        if options.proxy and not self.proxy_confirmed then
-            log_to_file(self, "TDLib: waiting for proxy to be ready (fallback)...")
-            local start_wait = love.timer.getTime()
-            while not self.proxy_confirmed and love.timer.getTime() - start_wait < 10 do
-                self:poll()
-                love.timer.sleep(0.1)
-            end
-            if not self.proxy_confirmed then
-                self.auth_error = "Proxy connection timeout"
-                log_to_file(self, "TDLib: proxy connection timeout")
-                return
-            end
-        end
+        -- Proxy is force-confirmed via fallback after 2s; don't block here
         self:send_tdlib_parameters()
     elseif kind == "authorizationStateWaitEncryptionKey" then
         log_to_file(self, "TDLib: authorizationStateWaitEncryptionKey")
-        -- Proxy should already be confirmed from start()
-        if options.proxy and not self.proxy_confirmed then
-            log_to_file(self, "TDLib: waiting for proxy to be ready (fallback)...")
-            local start_wait = love.timer.getTime()
-            while not self.proxy_confirmed and love.timer.getTime() - start_wait < 10 do
-                self:poll()
-                love.timer.sleep(0.1)
-            end
-            if not self.proxy_confirmed then
-                self.auth_error = "Proxy connection timeout"
-                log_to_file(self, "TDLib: proxy connection timeout")
-                return
-            end
-        end
         if not self.encryption_key_sent then
             self.encryption_key_sent = true
             self:send({

@@ -76,6 +76,13 @@ while running do
 
     local response = lib.td_json_client_receive(client, 0.05)
     if response ~= nil and response ~= ffi.NULL then
+        local count = out_channel:getCount()
+        if count > 500 then
+            -- Канал переполнен, сбрасываем старые сообщения вместо блокировки
+            for _ = 1, math.min(count - 400, 100) do
+                out_channel:pop()
+            end
+        end
         out_channel:push(ffi.string(response))
     end
 end

@@ -189,15 +189,16 @@ local is_abxy = item.id == "abxy"
             ui.text("←/→ — переключить", 56, y + item_h + 1, f.tiny, colors.muted)
         elseif is_vpn then
             if self.vpn_restarting then
-                local cx = 40 + (w - 80) / 2
+                -- White spinner on the right side
+                local cx = w - 70
                 local cy = y + item_h / 2
                 local radius = 10
                 local angle = self.vpn_spinner
-                love.graphics.setColor(colors.accent)
-                love.graphics.setLineWidth(2)
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.setLineWidth(3)
                 love.graphics.arc("line", cx, cy, radius, angle, angle + math.pi * 1.5)
                 love.graphics.setLineWidth(1)
-                ui.text("Перезапуск VPN...", cx - 60, y + 7, f.small, colors.text)
+                ui.text("VPN перезапуск...", 60, y + 7, f.small, colors.text)
             else
                 ui.text("VPN / Прокси", 60, y + 7, f.normal, colors.text)
                 ui.text("A — перезапустить", w - 180, y + 7, f.small, colors.muted)

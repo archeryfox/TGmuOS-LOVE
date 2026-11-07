@@ -190,11 +190,27 @@ local function extract_native(relative_path)
 end
 
 local logged_messages = {}
+local logged_count = 0
+local logged_max = 1000
 local function app_log(kind, message)
     if not message or message == "" then return end
     local key = kind .. ":" .. tostring(message)
     if logged_messages[key] then return end
     logged_messages[key] = true
+    logged_count = logged_count + 1
+    if logged_count > logged_max then
+        -- Удаляем ~10% старейших записей чтобы не расти бесконечно
+        local n = 0
+        for k in pairs(logged_messages) do
+            logged_messages[k] = nil
+            n = n + 1
+            if n >= math.ceil(logged_max * 0.1) then break end
+        end
+        logged_count = 0
+        for _ in pairs(logged_messages) do logged_count = logged_count + 1 end
+        logged_messages[key] = true
+        logged_count = logged_count + 1
+    end
     local ok, source = pcall(love.filesystem.getSource)
     if not ok or type(source) ~= "string" then return end
     local handle = io.open(source:gsub("/+$", "") .. "/log.txt", "a")
@@ -249,10 +265,16 @@ function love.load()
             abxy_layout = function() return ABXY_LAYOUT end,
             toggle_abxy = toggle_abxy,
             restart_vpn = function(callback)
-                os.execute('pkill -9 sing-box')
-                os.execute('sleep 1')
-                os.execute('ulimit -n 65536; /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json 2>&1 &')
-                os.execute('sleep 3')
+                os.execute('pkill -9 sing-box 2>/dev/null')
+                -- Reset TDLib proxy state so it re-confirms with the new sing-box instance
+                if tg then
+                    tg.proxy_confirmed = false
+                    tg.proxy_ready = false
+                    if tg.options and tg.options.proxy then
+                        tg:add_proxy(tg.options.proxy)
+                    end
+                end
+                os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
                 if callback then callback() end
             end,
         }),
