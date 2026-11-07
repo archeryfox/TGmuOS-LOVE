@@ -78,14 +78,14 @@ return function(telegram)
         if fmt == "webp" then
             table.insert(converters,
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. quoted_input ..
-                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -vf scale=128:128:force_original_aspect_ratio=decrease -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
             table.insert(converters, clean_env .. "dwebp " .. quoted_input .. " -o " .. quoted_output .. " 2>/dev/null")
             table.insert(converters, clean_env .. "magick " .. shell_quote(input_path .. "[0]") .. " " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "gif" or fmt == "video" then
             table.insert(converters,
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. quoted_input ..
-                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -vf scale=128:128:force_original_aspect_ratio=decrease -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "tgs" then
             local lottie = "lottie_convert.py"
@@ -95,7 +95,7 @@ return function(telegram)
             table.insert(converters,
                 clean_env .. lottie .. " " .. quoted_input .. " " .. shell_quote(gif_path) .. " 2>/dev/null && " ..
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. shell_quote(gif_path) ..
-                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -vf scale=128:128:force_original_aspect_ratio=decrease -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "gif" then
             table.insert(converters, clean_env .. "magick " .. shell_quote(input_path .. "[0]") .. " " .. quoted_output .. " 2>/dev/null")
@@ -151,7 +151,7 @@ return function(telegram)
             return
         end
         -- Downscale oversized images to max side 1024 to reduce VRAM usage
-        local max_side = 1024
+        local max_side = 128
         local iw, ih = image_data:getWidth(), image_data:getHeight()
         if math.max(iw, ih) > max_side then
             local scale = max_side / math.max(iw, ih)

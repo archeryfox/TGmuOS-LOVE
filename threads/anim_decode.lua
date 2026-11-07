@@ -5,11 +5,11 @@ local json = require("dkjson")
 local in_channel = love.thread.getChannel("anim_in")
 local out_channel = love.thread.getChannel("anim_out")
 
-local MAX_FRAMES = 48
-local MAX_EDGE = 256
+local MAX_FRAMES = 24
+local MAX_EDGE = 128
 local MAX_FPS = 24
 local MIN_FPS = 15
-local MAX_DURATION = 3
+local MAX_DURATION = 2
 local MAX_TGS_FILE_BYTES = 1024 * 1024
 
 local function sh_quote(value)

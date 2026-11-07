@@ -1458,6 +1458,18 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
             hit.media_kind = is_sticker and "sticker" or "animation"
             hit.media_x, hit.media_y = media_x, media_y
             hit.media_w, hit.media_h = image_width, image_height
+            -- Store sticker set link for opening sticker pack
+            if is_sticker and message and message.content and message.content.sticker then
+                local sticker = message.content.sticker
+                local set_id = sticker.set_id
+                if set_id then
+                    hit.link = "https://t.me/addstickers/" .. tostring(set_id)
+                    hit.sticker_set_id = set_id
+                    -- Also store in message for context menu access
+                    message._sticker_set_link = hit.link
+                    message._sticker_set_id = set_id
+                end
+            end
             self.media_hits[#self.media_hits + 1] = hit
             if can_play then
                 local _, _, playback_entry = self.tg:media_file_for_message(message)
