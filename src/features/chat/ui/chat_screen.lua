@@ -704,6 +704,20 @@ function messenger_screen:context_menu_items(message)
         items[#items + 1] = {label = "Загрузить стикер", action = "download_sticker"}
     end
 
+    -- "Скачать в hi-res" — для фото загружает最高 разрешение
+    if content_type == "messagePhoto" then
+        local hi = self:choose_photo_hires and self:choose_photo_hires(message)
+        if hi and hi.photo and hi.photo.id then
+            local entry = self.photos and self.photos[hi.photo.id]
+            local is_downloaded = entry and entry.source_path and entry.source_path ~= ""
+            if is_downloaded then
+                items[#items + 1] = {label = "Уже загружено", action = nil}
+            else
+                items[#items + 1] = {label = "Скачать в hi-res", action = "download_photo_hires"}
+            end
+        end
+    end
+
     -- "Воспроизвести" — только для анимированных стикеров/анимаций
     local can_play_media = false
     if content_type == "messageAnimation" then

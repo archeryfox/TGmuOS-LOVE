@@ -59,6 +59,10 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         if item.sender_id then
             ms.tg:open_private_chat(item.sender_id)
         end
+    elseif item.action == "download_photo_hires" then
+        if ms.tg.ensure_photo_hires then
+            ms.tg:ensure_photo_hires(cm.message)
+        end
     end
 end
 
