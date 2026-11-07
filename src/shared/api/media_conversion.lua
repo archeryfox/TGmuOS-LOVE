@@ -78,14 +78,14 @@ return function(telegram)
         if fmt == "webp" then
             table.insert(converters,
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. quoted_input ..
-                " -frames:v 1 -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
             table.insert(converters, clean_env .. "dwebp " .. quoted_input .. " -o " .. quoted_output .. " 2>/dev/null")
             table.insert(converters, clean_env .. "magick " .. shell_quote(input_path .. "[0]") .. " " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "gif" or fmt == "video" then
             table.insert(converters,
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. quoted_input ..
-                " -frames:v 1 -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "tgs" then
             local lottie = "lottie_convert.py"
@@ -95,7 +95,7 @@ return function(telegram)
             table.insert(converters,
                 clean_env .. lottie .. " " .. quoted_input .. " " .. shell_quote(gif_path) .. " 2>/dev/null && " ..
                 clean_env .. "ffmpeg -y -v error -threads 1 -i " .. shell_quote(gif_path) ..
-                " -frames:v 1 -f image2 " .. quoted_output .. " 2>/dev/null")
+                " -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "gif" then
             table.insert(converters, clean_env .. "magick " .. shell_quote(input_path .. "[0]") .. " " .. quoted_output .. " 2>/dev/null")

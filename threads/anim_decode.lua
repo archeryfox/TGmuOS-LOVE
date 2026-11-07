@@ -285,7 +285,7 @@ local function decode_job(job)
     end
     local log_path = out_dir .. "/ffmpeg.log"
     local command = string.format(
-        "%s%s -y -v error -an -threads 2 -i %s -vf %s -start_number 1 -frames:v %d %s > %s 2>&1",
+        "%s%s -y -v error -an -threads 2 -i %s -vf %s -start_number 1 -frames:v %d -pix_fmt rgba %s > %s 2>&1",
         clean_env,
         sh_quote(ffmpeg),
         sh_quote(input_path),
