@@ -1,4 +1,5 @@
 local json = require("dkjson")
+local timer = require("love.timer")
 local in_channel = love.thread.getChannel("vpn_status_in")
 local out_channel = love.thread.getChannel("vpn_status_out")
 local init = in_channel:demand()
@@ -81,5 +82,5 @@ while true do
     if type(command) == "string" then
         handle(command)
     end
-    local t = os.clock(); while os.clock() - t < 0.05 do end
+    timer.sleep(0.05)
 end
