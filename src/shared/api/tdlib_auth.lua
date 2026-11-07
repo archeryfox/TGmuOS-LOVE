@@ -63,6 +63,7 @@ function tdlib_auth.handle_authorization(tdlib, state)
         tdlib.auth_error = ""
         tdlib:send({["@type"] = "getMe"}, "me")
         tdlib:send({["@type"] = "getChats", chat_list = {["@type"] = "chatListMain"}, limit = 15}, "loadChats")
+        tdlib:send({["@type"] = "getChatFilters"}, "chatFilters")
         
     elseif state["@type"] == "authorizationStateClosed" then
         tdlib.ready = false
