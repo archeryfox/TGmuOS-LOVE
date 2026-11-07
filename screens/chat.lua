@@ -65,17 +65,17 @@ function chat:draw()
         local isOutgoing = (msg.sender_user_id and _G.tg and msg.sender_user_id == _G.tg.me_id) or (msg.from == "me")
         
         if not isOutgoing then
-            ui.rect(16, y, 400, 40, COLORS.panel)
+            ui.rect(16, y, 420, 44, COLORS.panel)
             ui.drawText(msg.text or "", 24, y+12, f.small, COLORS.text)
             local date = msg.date or 0
-            ui.drawText(os.date("%H:%M", date), 380, y+26, f.tiny, COLORS.muted)
-            y = y + 50
+            ui.drawText(os.date("%H:%M", date), 400, y+26, f.tiny, COLORS.muted)
+            y = y + 54
         else
-            ui.rect(224, y, 400, 40, COLORS.accent)
-            ui.drawText(msg.text or "", 232, y+12, f.small, COLORS.text)
+            ui.rect(204, y, 420, 44, COLORS.accent)
+            ui.drawText(msg.text or "", 212, y+12, f.small, COLORS.text)
             local date = msg.date or 0
             ui.drawText(os.date("%H:%M", date), 588, y+26, f.tiny, COLORS.text)
-            y = y + 50
+            y = y + 54
         end
         ::continue::
     end
