@@ -1458,10 +1458,20 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
             hit.media_kind = is_sticker and "sticker" or "animation"
             hit.media_x, hit.media_y = media_x, media_y
             hit.media_w, hit.media_h = image_width, image_height
-            -- Store sticker set link for opening sticker pack
-            if is_sticker and message and message.content and message.content.sticker then
-                local sticker = message.content.sticker
-                local set_id = sticker.set_id
+            -- Store sticker set link for opening sticker pack (stickers + TGS/WebM animations)
+            local sticker_obj = nil
+            if message and message.content then
+                if message.content.sticker then
+                    sticker_obj = message.content.sticker
+                elseif message.content.animation then
+                    sticker_obj = message.content.animation
+                end
+            end
+            if (is_sticker or is_animation) and sticker_obj then
+                local set_id = sticker_obj.set_id
+                if not set_id and sticker_obj.sticker then
+                    set_id = sticker_obj.sticker.set_id
+                end
                 if set_id then
                     hit.link = "https://t.me/addstickers/" .. tostring(set_id)
                     hit.sticker_set_id = set_id
