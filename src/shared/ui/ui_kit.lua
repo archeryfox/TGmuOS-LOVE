@@ -70,9 +70,9 @@ function ui.load_fonts(scale)
     fonts.small = load_font(path, 14)
     fonts.tiny = load_font(path, 12)
     fonts.mono = load_font("fonts/JetBrainsMono_SemiBold.ttf", 13)
-    fonts.emoji_normal = load_font("fonts/TwemojiColorFont.ttf", 16) or load_font("fonts/TwitterColorEmoji-SVGinOT.ttf", 16)
-    fonts.emoji_small = load_font("fonts/TwemojiColorFont.ttf", 14) or load_font("fonts/TwitterColorEmoji-SVGinOT.ttf", 14)
-    fonts.emoji_tiny = load_font("fonts/TwemojiColorFont.ttf", 12) or load_font("fonts/TwitterColorEmoji-SVGinOT.ttf", 12)
+    fonts.emoji_normal = load_font("fonts/NotoEmoji-Regular.ttf", 16)
+    fonts.emoji_small = load_font("fonts/NotoEmoji-Regular.ttf", 14)
+    fonts.emoji_tiny = load_font("fonts/NotoEmoji-Regular.ttf", 12)
     fonts.bold = load_font("fonts/AdwaitaSans-Bold.ttf", 16) or fonts.normal
     fonts.italic = load_font("fonts/AdwaitaSans-Italic.ttf", 16) or fonts.normal
     fonts.bold_italic = load_font("fonts/AdwaitaSans-BoldItalic.ttf", 16) or fonts.normal
