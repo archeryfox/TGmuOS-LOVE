@@ -536,7 +536,7 @@ function messenger_screen:draw_sticker_pack(w, h)
         love.graphics.setScissor(grid_x, grid_y, grid_w, grid_h)
         local first_index = pack.scroll * columns + 1
         local last_index = math.min(#pack.stickers, first_index + rows_per_page * columns - 1)
-        local selected_idx = pack.selected_index or 1
+        local selected_idx = pack.focus or pack.selected_index or 1
         for index = first_index, last_index do
             local slot = index - first_index
             local column = slot % columns
@@ -575,7 +575,7 @@ function messenger_screen:draw_sticker_pack(w, h)
         end
         love.graphics.setScissor()
     end
-    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · клик по стикеру — предпросмотр, Esc — закрыть",
+    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · стрелки фокус · A/X отправить · Enter предпросмотр · Esc закрыть",
         panel_x + 18, panel_y + panel_h - 25, fonts.tiny, colors.muted)
 
     -- Fullscreen sticker preview

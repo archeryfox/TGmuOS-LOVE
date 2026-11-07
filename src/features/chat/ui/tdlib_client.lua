@@ -971,6 +971,8 @@ function telegram:handle_sticker_set(object)
             self.sticker_set_viewer.title = object.title or self.sticker_set_viewer.title or ""
             self.sticker_set_viewer.name = object.name or self.sticker_set_viewer.name or ""
             self.sticker_set_viewer.stickers = object.stickers or self.sticker_set_viewer.stickers or {}
+            self.sticker_set_viewer.focus = 1
+            self.sticker_set_viewer.scroll = 0
             self.sticker_set_viewer.thumbnail = object.thumbnail or self.sticker_set_viewer.thumbnail
         end
     end

@@ -416,23 +416,46 @@ self.fullscreen_zoom = 1
                 local grid_w = panel_w - 32
                 local grid_h = panel_h - 92
                 local columns = math.max(1, math.floor(grid_w / 112))
-                local cell_h = math.min(116, grid_w / columns)
-                local rows_per_page = math.max(1, math.floor(grid_h / cell_h))
+                local rows_per_page = math.max(1, math.floor(grid_h / 116))
                 local row_count = math.ceil(#pack.stickers / columns)
                 local max_scroll = math.max(0, row_count - rows_per_page)
-                if key == "up" or key == "kp8" then
-                    pack.scroll = math.max(0, (pack.scroll or 0) - 1)
-                    return
+                pack.focus = pack.focus or 1
+                if key == "left" then
+                    pack.focus = math.max(1, pack.focus - 1)
+                elseif key == "right" then
+                    pack.focus = math.min(#pack.stickers, pack.focus + 1)
+                elseif key == "up" or key == "kp8" then
+                    pack.focus = math.max(1, pack.focus - columns)
                 elseif key == "down" or key == "kp2" then
-                    pack.scroll = math.min(max_scroll, (pack.scroll or 0) + 1)
-                    return
+                    pack.focus = math.min(#pack.stickers, pack.focus + columns)
                 elseif key == "pageup" then
+                    pack.focus = math.max(1, pack.focus - columns * rows_per_page)
                     pack.scroll = math.max(0, (pack.scroll or 0) - rows_per_page)
-                    return
                 elseif key == "pagedown" then
+                    pack.focus = math.min(#pack.stickers, pack.focus + columns * rows_per_page)
                     pack.scroll = math.min(max_scroll, (pack.scroll or 0) + rows_per_page)
-                    return
+                elseif key == "a" or key == "x" then
+                    if self.tg.current_chat_id then
+                        local sticker = pack.stickers[pack.focus]
+                        if sticker then self.tg:send_sticker(self.tg.current_chat_id, sticker) end
+                    end
+                elseif key == "return" or key == "kpenter" then
+                    local sticker = pack.stickers[pack.focus]
+                    local file = sticker and sticker.sticker
+                    local entry = file and self.tg.stickers and self.tg.stickers[file.id]
+                    local img = entry and (entry.image or (entry.frames and entry.frames[1]))
+                    if img then
+                        self.sticker_fullscreen_image = img
+                        self.sticker_fullscreen_sticker = sticker
+                    end
                 end
+                -- keep focus visible
+                local focus_row = math.floor((pack.focus - 1) / columns)
+                local scroll = pack.scroll or 0
+                if focus_row < scroll then pack.scroll = focus_row end
+                if focus_row >= scroll + rows_per_page then pack.scroll = focus_row - rows_per_page + 1 end
+                pack.scroll = math.max(0, math.min(max_scroll, pack.scroll or 0))
+                return
             end
             if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             return
@@ -872,6 +895,7 @@ self.fullscreen_zoom = 1
                                 self.sticker_fullscreen_image = img
                                 self.sticker_fullscreen_sticker = sticker
                             end
+                            pack.focus = idx
                         end
                     end
                 end
