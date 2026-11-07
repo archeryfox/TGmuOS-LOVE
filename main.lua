@@ -609,7 +609,12 @@ handle_key = function(key, from_gamepad)
             ms.fullscreen_zoom = 1
             ms.fullscreen_pan_x = 0
             ms.fullscreen_pan_y = 0
-            tg.sticker_set_viewer = nil
+            if ms.sticker_fullscreen_image then
+                ms.sticker_fullscreen_image = nil
+                ms.sticker_fullscreen_sticker = nil
+            else
+                tg.sticker_set_viewer = nil
+            end
             if ms.search_active then
                 ms.search_active = false
                 ms:set_search_query("", false)

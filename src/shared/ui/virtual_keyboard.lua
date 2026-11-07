@@ -148,6 +148,31 @@ function keyboard:switch_lang()
     self:_clamp_cursor()
 end
 
+function keyboard:cycle_mode()
+    if self.mode == "text" and self.lang == "ru" then
+        self.lang = "en"
+        self:_sync_layout()
+        self:_clamp_cursor()
+        return "nav"
+    elseif self.mode == "text" and self.lang == "en" then
+        self.mode = "emoji"
+        self:_sync_layout()
+        self:_clamp_cursor()
+        return "nav"
+    elseif self.mode == "emoji" then
+        self.mode = "text"
+        self.lang = "ru"
+        self:_sync_layout()
+        self:_clamp_cursor()
+        return "stickers"
+    end
+    self.lang = "ru"
+    self.mode = "text"
+    self:_sync_layout()
+    self:_clamp_cursor()
+    return "nav"
+end
+
 function keyboard:navigate(dx, dy)
     if dy ~= 0 then
         self.row = self.row + dy
@@ -230,8 +255,8 @@ function keyboard:keypressed(key)
         self.shift = not self.shift
         return true, {kind = "nav"}
     elseif key == "y" then
-        self:switch_lang()
-        return true, {kind = "nav"}
+        local kind = self:cycle_mode()
+        return true, {kind = kind}
     elseif key == "return" or key == "kpenter" or key == "a" then
         return true, self:activate()
     elseif key == "backspace" then
@@ -269,7 +294,7 @@ function keyboard:draw(preview)
     if shown == "" then
         shown = self.mode == "emoji"
             and "A — вставить   B — ⌫   L1/R1 — страница   MENU — скрыть"
-            or "A — ввод   B — ⌫   X — Shift   Y — язык   MENU — скрыть"
+            or "A — ввод   B — ⌫   X — Shift   Y — RU/EN/Emoji/Стикеры   MENU — скрыть"
     end
     ui.text(ui.fit(shown, small, KB_W - 120), x + PAD + 74, y + 5, small,
         preview and preview ~= "" and colors.text or colors.muted)

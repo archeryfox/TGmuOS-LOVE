@@ -211,6 +211,13 @@ return function(telegram)
         local file = sticker.sticker or sticker
         local file_id = file and file.id
         if not file_id then return end
+        -- Ensure the sticker file is downloaded locally first
+        local fl = file["local"] or {}
+        if not (fl.is_downloading_completed and fl.path and fl.path ~= "") then
+            self.pending_sticker_send = {chat_id = chat_id, sticker = sticker}
+            self:load_sticker_file(file)
+            return
+        end
         self:send({
             ["@type"] = "sendMessage",
             chat_id = chat_id,

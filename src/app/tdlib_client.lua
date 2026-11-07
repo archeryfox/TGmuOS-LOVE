@@ -869,6 +869,14 @@ function telegram:handle_file(file)
             else
                 self:load_sticker(file_id, file_local.path)
             end
+        -- Send pending sticker if its file just finished downloading
+        if kind == "sticker" and self.pending_sticker_send
+            and self.pending_sticker_send.sticker
+            and ((self.pending_sticker_send.sticker.sticker or self.pending_sticker_send.sticker).id == file_id) then
+            local ps = self.pending_sticker_send
+            self.pending_sticker_send = nil
+            self:send_sticker(ps.chat_id, ps.sticker)
+        end
         elseif kind == "animation" then
             self:load_animation(file_id, file_local.path)
         elseif kind == "video" then
