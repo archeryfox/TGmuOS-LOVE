@@ -1151,6 +1151,7 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
             height = padding * 2 + author_height + math.max(1, #lines) * line_height + small_height + 2
         else
             local text = self.tg:message_text(message)
+    local entities = (message and message.content and message.content.text and message.content.text.entities) or {}
             local lines = wrapped_lines(font, text, wrap_width)
             local line_count = math.max(1, #lines)
             height = padding * 2 + author_height + line_count * line_height + small_height + 2
@@ -1282,6 +1283,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
     end
     local outgoing = self:outgoing(message)
     local text = self.tg:message_text(message)
+    local entities = (message and message.content and message.content.text and message.content.text.entities) or {}
     local sender_name = not outgoing and self.tg:sender_name(message) or nil
     local download_state = self.tg:media_download_state(message)
     local is_downloading = download_state and download_state.status == "downloading"
@@ -1574,5 +1576,73 @@ function messenger_screen:draw_input(panel_x, panel_w, h)
     ui.printf("Отправить", input_x + input_w + 12, input_y + 11, send_w, "center", f.small, colors.text)
 end
 
+
+
+
+local function render_formatted_text(text, entities, x, y, width, font, color)
+  if not text or text == "" then return end
+  local cps = {}
+  for p, c in utf8.codes(text) do cps[#cps+1] = {pos = p, cp = c} end
+  local function style_at(idx)
+    for _, e in ipairs(entities or {}) do
+      local etype = e.type and e.type["@type"]
+      local off = (e.offset or 0) + 1
+      local len = e.length or 0
+      if idx >= off and idx < off + len then
+        if etype == "textEntityTypeBold" then return "bold" end
+        if etype == "textEntityTypeItalic" then return "italic" end
+        if etype == "textEntityTypeCode" then return "code" end
+        if etype == "textEntityTypePre" or etype == "textEntityTypePreCode" then return "code" end
+        if etype == "textEntityTypeUnderline" then return "underline" end
+        if etype == "textEntityTypeStrikethrough" then return "strike" end
+        if etype == "textEntityTypeTextUrl" or etype == "textEntityTypeUrl" then return "link" end
+      end
+    end
+    return "plain"
+  end
+  local runs = {}
+  local cur = nil
+  for idx, info in ipairs(cps) do
+    if info.cp == 10 then
+      if cur then runs[#runs+1] = cur; cur = nil end
+      runs[#runs+1] = {text = "\n", style = "newline"}
+    else
+      local st = style_at(idx)
+      local ch = utf8.char(info.cp)
+      if not cur or cur.style ~= st then
+        if cur then runs[#runs+1] = cur end
+        cur = {text = ch, style = st}
+      else
+        cur.text = cur.text .. ch
+      end
+    end
+  end
+  if cur then runs[#runs+1] = cur end
+  local line_h = font:getHeight()
+  local cur_x = x
+  local cur_y = y
+  for _, run in ipairs(runs) do
+    if run.style == "newline" then
+      cur_x = x
+      cur_y = cur_y + line_h
+    else
+      local seg_color = (run.style == "bold" and {1,1,1,1}) or (run.style == "italic" and {0.85,0.85,0.95,1}) or (run.style == "code" and {0.9,0.9,0.6,1}) or (run.style == "link" and {0.4,0.7,1,1}) or color
+      for word in run.text:gmatch("%S+") do
+        local w = font:getWidth(word .. " ")
+        if cur_x + w > x + width and cur_x > x then
+          cur_x = x
+          cur_y = cur_y + line_h
+        end
+        ui.text(word, cur_x, cur_y, font, seg_color)
+        if run.style == "bold" then ui.text(word, cur_x + 1, cur_y, font, seg_color) end
+        cur_x = cur_x + font:getWidth(word .. " ")
+      end
+      if run.text:match("%s$") then
+        cur_x = cur_x + font:getWidth(" ")
+      end
+    end
+  end
+  love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+end
 
 return messenger_screen
