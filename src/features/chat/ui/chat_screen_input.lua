@@ -398,7 +398,14 @@ self.fullscreen_zoom = 1
         end
         if self.tg.sticker_set_viewer then
             if self.sticker_fullscreen_image then
-                if key == "escape" or key == "b" then self.sticker_fullscreen_image = nil end
+                if key == "escape" or key == "b" then
+                    self.sticker_fullscreen_image = nil
+                    self.sticker_fullscreen_sticker = nil
+                elseif key == "x" and self.tg.current_chat_id and self.sticker_fullscreen_sticker then
+                    self.tg:send_sticker(self.tg.current_chat_id, self.sticker_fullscreen_sticker)
+                    self.sticker_fullscreen_image = nil
+                    self.sticker_fullscreen_sticker = nil
+                end
                 return
             end
             local pack = self.tg.sticker_set_viewer
@@ -833,9 +840,11 @@ self.fullscreen_zoom = 1
                 if x >= close_x and x <= panel_x + panel_w and y >= close_y and y <= close_y + 44 then
                     self.tg.sticker_set_viewer = nil
                     self.sticker_fullscreen_image = nil
+                    self.sticker_fullscreen_sticker = nil
                 elseif x < panel_x or x > panel_x + panel_w or y < panel_y or y > panel_y + panel_h then
                     self.tg.sticker_set_viewer = nil
                     self.sticker_fullscreen_image = nil
+                    self.sticker_fullscreen_sticker = nil
                 else
                     -- click inside grid: select sticker for fullscreen preview
                     local grid_x, grid_y = panel_x + 16, panel_y + 58
@@ -855,7 +864,10 @@ self.fullscreen_zoom = 1
                             local file = sticker and sticker.sticker
                             local entry = file and self.tg.stickers and self.tg.stickers[file.id]
                             local img = entry and (entry.image or (entry.frames and entry.frames[1]))
-                            if img then self.sticker_fullscreen_image = img end
+                            if img then
+                                self.sticker_fullscreen_image = img
+                                self.sticker_fullscreen_sticker = sticker
+                            end
                         end
                     end
                 end

@@ -191,6 +191,27 @@ return function(telegram)
         end
     end
 
+    function telegram:send_sticker(chat_id, sticker)
+        if not chat_id or not sticker then return end
+        local file = sticker.sticker or sticker
+        local file_id = file and file.id
+        if not file_id then return end
+        self:send({
+            ["@type"] = "sendMessage",
+            chat_id = chat_id,
+            input_message_content = {
+                ["@type"] = "inputMessageSticker",
+                sticker = {
+                    ["@type"] = "inputFileId",
+                    id = file_id,
+                },
+                emoji = sticker.emoji or "",
+                width = (sticker.width or file.width or 512),
+                height = (sticker.height or file.height or 512),
+            },
+        })
+    end
+
     function telegram:send_message(chat_id, text)
         if not chat_id or not text or text == "" then
             return

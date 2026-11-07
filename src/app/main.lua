@@ -339,7 +339,7 @@ end
 
 function love.keypressed(key)
     if key == "escape" and tg and tg.sticker_set_viewer then
-        if current and current.sticker_fullscreen_image then current.sticker_fullscreen_image = nil; return end
+        if current and current.sticker_fullscreen_image then current.sticker_fullscreen_image = nil; current.sticker_fullscreen_sticker = nil; return end
         tg.sticker_set_viewer = nil
         return
     end

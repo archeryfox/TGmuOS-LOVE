@@ -578,7 +578,7 @@ function messenger_screen:draw_sticker_pack(w, h)
         local dw, dh = img:getWidth() * fit, img:getHeight() * fit
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(img, (w - dw) / 2, (h - dh) / 2, 0, fit, fit)
-        ui.text("Esc / B — закрыть предпросмотр", 12, h - 22, fonts.tiny, colors.muted)
+        ui.text("X — отправить · Esc / B — закрыть", 12, h - 22, fonts.tiny, colors.muted)
     end
 end
 
