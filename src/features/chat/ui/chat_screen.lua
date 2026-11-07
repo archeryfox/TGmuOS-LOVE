@@ -820,6 +820,8 @@ function messenger_screen:context_menu_items(message)
         can_play_media = true
     elseif content_type == "messageSticker" then
         can_play_media = self.tg.sticker_playback_supported and self.tg:sticker_playback_supported(message)
+    elseif content_type == "messageVoiceNote" or content_type == "messageAudio" then
+        can_play_media = true
     end
     if can_play_media then
         local _, _, entry = self.tg:media_file_for_message(message)
