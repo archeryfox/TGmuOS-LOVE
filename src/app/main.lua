@@ -156,6 +156,7 @@ local function build_screens()
             accounts = function() return account_store.accounts, account_store.active_key end,
             switch_account = function(key) pending_account_key = key end,
             add_account = function() pending_account_key = next_account_key() end,
+            open_profile = function() show_my_profile() end,
         }),
     }
 end

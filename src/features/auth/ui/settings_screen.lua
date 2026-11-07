@@ -43,6 +43,7 @@ end
 function settings_screen:items()
     local accounts = self:accounts()
     local items = {{id = "exit_app"}}
+    items[#items + 1] = {id = "profile"}
     items[#items + 1] = {id = "scale"}
     items[#items + 1] = {id = "performance"}
     items[#items + 1] = {id = "autoplay_videos"}
@@ -117,6 +118,7 @@ local is_abxy = item.id == "abxy"
         local is_exit = item.id == "exit_app"
         local is_add = item.id == "add_account"
         local is_logout = item.id == "logout"
+        local is_profile = item.id == "profile"
 
         local bg = selected and colors.accent or colors.panel_alt
         if is_exit then bg = selected and colors.red or colors.panel_alt end
@@ -184,6 +186,10 @@ local is_abxy = item.id == "abxy"
             ui.text("Выйти в меню muOS", 60, y + 7, f.normal, colors.text)
             ui.text("Enter — свернуть", w - 180, y + 7, f.small, colors.muted)
             self.minimize_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif is_profile then
+            ui.text("Открыть профиль", 60, y + 7, f.normal, colors.text)
+            ui.text("Enter — открыть", w - 180, y + 7, f.small, colors.muted)
+            self.profile_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_abxy then
             local half_gap = 12
             local half_w = math.floor((w - 80 - half_gap) / 2)
@@ -285,6 +291,8 @@ function settings_screen:activate_item(item)
         else
             self.logout_confirm = true
         end
+    elseif item.id == "profile" then
+        if self.callbacks.open_profile then self.callbacks.open_profile() end
     elseif item.id == "scale" then
         ui.set_scale(self.scale)
     elseif item.id == "performance" then
