@@ -857,6 +857,22 @@ function telegram:handle_file(file)
                     self:load_image(preview.owner, file_local0.path, storage)
                 end
             end
+            -- Text preview: read file when downloaded
+            if self.text_preview and self.text_preview.loading then
+                local msg = self.text_preview.message
+                local doc = msg and msg.content and msg.content.document
+                local df = doc and doc.document
+                if df and tonumber(df.id) == file_id then
+                    local lines = {}
+                    local fh = io.open(file_local0.path, "r")
+                    if fh then
+                        for line in fh:lines() do lines[#lines+1] = line end
+                        fh:close()
+                    end
+                    self.text_preview.loading = false
+                    self.text_preview.lines = lines
+                end
+            end
         end
         return
     end
