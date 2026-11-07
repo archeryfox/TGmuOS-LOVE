@@ -153,3 +153,12 @@ On muOS the launcher `mux_launch.sh` auto-selects the first available config
 file from `/root/.config/Telegram/telegram.conf`,
 `/root/.config/tgmuos_love/telegram.conf` or
 `/root/.config/love_tg_native/telegram.conf`.
+
+## Related projects
+
+- [muVPN for muOS/Knulli](https://github.com/archeryfox/muvpn-love) — sing-box VLESS VPN client for the same devices.
+
+## Keywords
+
+Telegram for muOS, Telegram for Knulli, Telegram Anbernic, PortMaster Telegram,
+muOS Telegram client, Knulli Telegram, RG35XX Telegram, LÖVE Telegram, TDLib muOS.
