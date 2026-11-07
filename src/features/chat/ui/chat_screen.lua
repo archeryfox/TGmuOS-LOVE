@@ -245,7 +245,7 @@ function messenger_screen:load_chats_for_mode()
         self.tg:send({
             ["@type"] = "loadChats",
             chat_list = {["@type"] = "chatListMain"},
-            limit = 100,
+            limit = 20,
         }, "loadChats")
     end
 end
