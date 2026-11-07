@@ -160,5 +160,11 @@ file from `/root/.config/Telegram/telegram.conf`,
 
 ## Keywords
 
-Telegram for muOS, Telegram for Knulli, Telegram Anbernic, PortMaster Telegram,
-muOS Telegram client, Knulli Telegram, RG35XX Telegram, LÖVE Telegram, TDLib muOS.
+Telegram for muOS, Telegram for Knulli, Telegram for Anbernic, Telegram Anbernic,
+Telegram RG35XX, Telegram RG35XX SP, Telegram RG35XXSP, Telegram Anbernic RG35XX,
+PortMaster Telegram, muOS Telegram client, Knulli Telegram client, Anbernic Telegram client,
+RG35XX Telegram client, PortMaster Telegram love, LÖVE Telegram, TDLib muOS,
+Telegram for handheld, Telegram retro console, Telegram for portable console,
+Anbernic Telegram app, muOS Telegram app, Knulli Telegram app, Telegram on Anbernic,
+download Telegram muOS, install Telegram Anbernic, Telegram for muOS download.
+

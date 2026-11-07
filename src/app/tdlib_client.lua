@@ -882,7 +882,7 @@ function telegram:handle_file(file)
         elseif kind == "chat_photo" then
             self:load_chat_photo(file_id, file_local.path)
         end
-        if entry.autoplay then
+        if entry.autoplay or kind == "voice" or kind == "audio" then
             if kind == "video" then
                 self:queue_media_decode("video", file_id, file_local.path)
             elseif kind == "video_note" then
