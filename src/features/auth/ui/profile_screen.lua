@@ -232,6 +232,15 @@ end
 function profile_screen:keypressed(key)
     if key == "escape" then
         return "back"
+    elseif key == "left" or key == "right" then
+        local idx = 1
+        for i, c in ipairs(categories) do if c.key == self.category then idx = i; break end end
+        idx = idx + (key == "right" and 1 or -1)
+        if idx < 1 then idx = #categories end
+        if idx > #categories then idx = 1 end
+        self.category = categories[idx].key
+        self.media_scroll = 0
+        if self.chat_id then self.tg:load_profile_media(self.chat_id, self.category) end
     end
 end
 
