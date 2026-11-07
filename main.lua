@@ -1,4 +1,8 @@
 -- main.lua — точка входа LÖVE для Telegram (полная копия love_tg_native с адаптацией)
+_G.BACKGROUND_MODE = false
+for _, a in ipairs(arg or {}) do
+    if a == "--background-notification" then _G.BACKGROUND_MODE = true end
+end
 local ui = require("src.shared.ui.ui_kit")
 local json = require("dkjson")
 local telegram = require("src.shared.api.tdlib_client")
@@ -404,7 +408,10 @@ handle_key = function(key, from_gamepad)
         close_controls()
         return
     end
-    if key == "escape" and current == screens.auth then
+    if key == "home" then
+        if love.window and love.window.minimize then love.window.minimize() end
+        return
+    end
         if from_gamepad then return end
         love.event.quit()
         return
