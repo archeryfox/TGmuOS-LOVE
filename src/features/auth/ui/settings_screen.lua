@@ -53,6 +53,7 @@ function settings_screen:items()
     items[#items + 1] = {id = "autoload"}
 items[#items + 1] = {id = "vsync"}
 items[#items + 1] = {id = "vibration_test"}
+items[#items + 1] = {id = "minimize"}
 items[#items + 1] = {id = "abxy"}
     items[#items + 1] = {id = "vpn"}
     items[#items + 1] = {id = "tg_push"}
@@ -108,6 +109,7 @@ function settings_screen:draw()
         local is_performance = item.id == "performance"
 local is_vsync = item.id == "vsync"
 local is_vibration_test = item.id == "vibration_test"
+local is_minimize = item.id == "minimize"
 local is_abxy = item.id == "abxy"
         local is_vpn = item.id == "vpn"
         local is_tg_push = item.id == "tg_push"
@@ -178,6 +180,10 @@ local is_abxy = item.id == "abxy"
             ui.text("Тест вибрации", 60, y + 7, f.normal, colors.text)
             ui.text("Enter — вибрировать", w - 200, y + 7, f.small, colors.muted)
             self.vibration_test_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif is_minimize then
+            ui.text("Свернуть приложение", 60, y + 7, f.normal, colors.text)
+            ui.text("Enter — свернуть", w - 180, y + 7, f.small, colors.muted)
+            self.minimize_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_abxy then
             local half_gap = 12
             local half_w = math.floor((w - 80 - half_gap) / 2)
@@ -301,6 +307,11 @@ function settings_screen:activate_item(item)
             self.tg.action_status = "Вибрация отправлена"
         else
             self.tg.action_error = "Вибрация недоступна (нет API)"
+        end
+    elseif item.id == "minimize" then
+        if love.window and love.window.minimize then
+            love.window.minimize()
+            self.tg.action_status = "Приложение свёрнуто"
         end
     elseif item.id == "abxy" then
         self:toggle_abxy()
@@ -475,6 +486,11 @@ function settings_screen:mousepressed(x, y, button)
                     self.tg.action_status = "Вибрация отправлена"
                 else
                     self.tg.action_error = "Вибрация недоступна (нет API)"
+                end
+            elseif item.id == "minimize" then
+                if love.window and love.window.minimize then
+                    love.window.minimize()
+                    self.tg.action_status = "Приложение свёрнуто"
                 end
             elseif item.id == "abxy" then
                 self:toggle_abxy()

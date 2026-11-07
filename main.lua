@@ -426,7 +426,7 @@ handle_key = function(key, from_gamepad)
         close_controls()
         return
     end
-    if key == "home" then
+    if key == "home" or key == "m" then
         if love.window and love.window.minimize then love.window.minimize() end
         return
     end
