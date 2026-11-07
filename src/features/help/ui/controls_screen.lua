@@ -262,8 +262,6 @@ function controls_screen:keypressed(key)
     elseif key == "escape" or key == "tab" or key == "return" or key == "kpenter" then
         return "back"
     elseif key == "up" then
-        self.scroll = math.max(0, self.scroll - 30)
-    elseif key == "down" then
         local w, h = ui.width(), ui.height()
         local max_y = 72
         for _, section in ipairs(SECTIONS) do
@@ -272,6 +270,8 @@ function controls_screen:keypressed(key)
         max_y = max_y - 72 + 30
         local max_scroll = math.max(0, max_y - (h - 80))
         self.scroll = math.min(max_scroll, self.scroll + 30)
+    elseif key == "down" then
+        self.scroll = math.max(0, self.scroll - 30)
     end
 end
 

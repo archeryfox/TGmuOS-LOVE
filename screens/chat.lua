@@ -96,11 +96,11 @@ end
 
 function chat:keypressed(key)
     if key == "up" then
-        self.cursor = math.max(1, self.cursor - 1)
-        if self.cursor < self.scroll + 1 then self.scroll = self.cursor - 1 end
-    elseif key == "down" then
         self.cursor = math.min(#self.messages, self.cursor + 1)
         if self.cursor > self.scroll + 6 then self.scroll = self.cursor - 6 end
+    elseif key == "down" then
+        self.cursor = math.max(1, self.cursor - 1)
+        if self.cursor < self.scroll + 1 then self.scroll = self.cursor - 1 end
     elseif key == "backspace" then
         if self.input == "" then
             switchScreen("chats")

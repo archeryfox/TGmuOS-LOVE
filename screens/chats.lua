@@ -119,9 +119,9 @@ end
 
 function chats:keypressed(key)
     if key == "up" then
-        self.selected = math.max(1, self.selected - 1)
-    elseif key == "down" then
         self.selected = math.min(#self.chats, self.selected + 1)
+    elseif key == "down" then
+        self.selected = math.max(1, self.selected - 1)
     elseif key == "space" then
         local idx = self.selected + self.scrollOffset
         local chat = self.chats[idx]
