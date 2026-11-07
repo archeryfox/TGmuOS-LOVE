@@ -103,7 +103,8 @@ function telegram.new()
     self.user_photo_by_id = {}
     self.chat_photos = {}
     self.chat_photo_by_id = {}
-    self.notifications = {}
+        self.notifications = {}
+        self.notifications_enabled = false
 
     self.on_ready = nil
     self.proxy_wait_start = nil
@@ -296,7 +297,8 @@ function telegram:reset_account_state()
     self.qr_conflict = false
     self.qr_requested_at = 0
     self.password_hint = ""
-    self.notifications = {}
+        self.notifications = {}
+        self.notifications_enabled = false
 end
 
 function telegram:log_out()
@@ -328,6 +330,7 @@ function telegram:request_qr()
 end
 
 function telegram:push_notification(notice)
+    if not self.notifications_enabled then return end
     self.notifications = self.notifications or {}
     self.active_downloads = self.active_downloads or 0
     self.max_concurrent_downloads = 3
