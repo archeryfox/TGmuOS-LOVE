@@ -236,7 +236,70 @@ local function app_log(kind, message)
     handle:close()
 end
 
-local function start_account()
+local account_store = {active_key = "account_1", accounts = {}}
+local pending_account_key
+
+local function account_key_valid(key)
+    return type(key) == "string" and key:match("^account_%d+$") ~= nil
+end
+
+local function find_account(key)
+    for _, account in ipairs(account_store.accounts) do
+        if account.key == key then return account end
+    end
+end
+
+local function save_account_store()
+    local encoded = json.encode(account_store)
+    if not encoded then return false end
+    return love.filesystem.write("accounts.json", encoded)
+end
+
+local function load_account_store()
+    local contents = love.filesystem.read("accounts.json")
+    if contents then
+        local ok, stored = pcall(json.decode, contents)
+        if ok and type(stored) == "table" then
+            account_store.accounts = {}
+            local accounts = type(stored.accounts) == "table" and stored.accounts or {}
+            for _, account in ipairs(accounts) do
+                if type(account) == "table" and account_key_valid(account.key) then
+                    account_store.accounts[#account_store.accounts + 1] = {
+                        key = account.key,
+                        title = type(account.title) == "string" and account.title or "Аккаунт",
+                        user_id = tonumber(account.user_id),
+                        authorized = account.authorized == true,
+                    }
+                end
+            end
+            if account_key_valid(stored.active_key) then account_store.active_key = stored.active_key end
+        end
+    end
+    if #account_store.accounts == 0 then
+        account_store.accounts[1] = {key = "account_1", title = "Основной аккаунт", authorized = false}
+    end
+    if not find_account(account_store.active_key) then
+        account_store.active_key = account_store.accounts[1].key
+    end
+    save_account_store()
+end
+
+local function next_account_key()
+    local index = 1
+    while find_account("account_" .. index) do index = index + 1 end
+    local key = "account_" .. index
+    account_store.accounts[#account_store.accounts + 1] = {
+        key = key,
+        title = "Новый аккаунт",
+        authorized = false,
+    }
+    return key
+end
+
+local function start_account(key)
+    key = key or account_store.active_key
+    account_store.active_key = key
+    save_account_store()
     tg = telegram.new()
     local library, library_error = extract_native("lib/libtdjson.so")
     local api_id, api_hash, proxy = load_settings()
@@ -246,21 +309,45 @@ local function start_account()
         tg.auth_error = "Не заданы api_id/api_hash. Укажите TG_API_ID и TG_API_HASH или ~/.config/Telegram/telegram.conf"
     else
         local save_directory = love.filesystem.getSaveDirectory()
+        local db_directory, files_directory
+        if key == "account_1" then
+            db_directory = save_directory .. "/tdlib"
+            files_directory = save_directory .. "/tdlib_files"
+        else
+            local account_directory = "accounts/" .. key
+            love.filesystem.createDirectory(account_directory)
+            db_directory = save_directory .. "/" .. account_directory .. "/tdlib"
+            files_directory = save_directory .. "/" .. account_directory .. "/tdlib_files"
+        end
         tg:start({
             lib = library,
-            db = save_directory .. "/tdlib",
-            files = save_directory .. "/tdlib_files",
-            log = save_directory .. "/tdlib.log",
+            db = db_directory,
+            files = files_directory,
+            log = save_directory .. "/tdlib_" .. key .. ".log",
             api_id = api_id,
             api_hash = api_hash,
             proxy = proxy,
         })
     end
     tg.on_me = function(user)
-        -- User info received
+        local account = find_account(key)
+        if not account then
+            account = {key = key}
+            account_store.accounts[#account_store.accounts + 1] = account
+        end
+        local name = ((user.first_name or "") .. " " .. (user.last_name or "")):gsub("^%s+", ""):gsub("%s+$", "")
+        account.title = name ~= "" and name or user.username or ("Аккаунт " .. tostring(user.id))
+        account.user_id = user.id
+        account.authorized = true
+        save_account_store()
     end
     tg.on_logged_out = function()
-        -- Handle logout
+        local account = find_account(key)
+        if account then
+            account.authorized = false
+            account.user_id = nil
+            save_account_store()
+        end
     end
     return tg
 end
@@ -274,7 +361,8 @@ function love.load()
     love.mouse.setVisible(true)
     love.mouse.setRelativeMode(false)
 
-    start_account()
+    load_account_store()
+    start_account(account_store.active_key)
 
     -- VPN status worker thread
     vpn_thread = love.thread.newThread("threads/vpn_status_worker.lua")
@@ -292,6 +380,10 @@ function love.load()
         messenger = messenger_screen.new(fonts, tg),
         profile = profile_screen.new(fonts, tg),
         settings = settings_screen.new(fonts, tg, {
+            accounts = function() return account_store.accounts, account_store.active_key end,
+            switch_account = function(key) pending_account_key = key end,
+            add_account = function() pending_account_key = next_account_key() end,
+            open_profile = function() show_profile(tg.current_chat_id, tg.me and tg.me.id) end,
             abxy_layout = function() return ABXY_LAYOUT end,
             toggle_abxy = toggle_abxy,
             restart_vpn = function(callback)
@@ -324,6 +416,37 @@ function love.load()
 end
 
 function love.update(dt)
+    -- Handle pending account switch
+    if pending_account_key then
+        local key = pending_account_key
+        pending_account_key = nil
+        start_account(key)
+        screens.auth = auth_screen.new(fonts, tg)
+        screens.messenger = messenger_screen.new(fonts, tg)
+        screens.profile = profile_screen.new(fonts, tg)
+        screens.settings = settings_screen.new(fonts, tg, {
+            accounts = function() return account_store.accounts, account_store.active_key end,
+            switch_account = function(k) pending_account_key = k end,
+            add_account = function() pending_account_key = next_account_key() end,
+            open_profile = function() show_profile(tg.current_chat_id, tg.me and tg.me.id) end,
+            abxy_layout = function() return ABXY_LAYOUT end,
+            toggle_abxy = toggle_abxy,
+            restart_vpn = function(callback)
+                os.execute('pkill -9 sing-box 2>/dev/null')
+                if tg then tg.proxy_confirmed = false; tg.proxy_ready = false end
+                os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
+                if callback then callback() end
+            end,
+            get_vpn_status = function()
+                vpn_in:push("probe")
+                local snap = vpn_out:pop()
+                if snap and snap.status then return snap.status.connected and "Включен" or "Выключен" end
+                return "Неизвестно"
+            end,
+        })
+        current = screens.auth
+        current:enter()
+    end
     if tg then
         tg:update(dt)
         if tg.auth_error and tg.auth_error ~= "" then
