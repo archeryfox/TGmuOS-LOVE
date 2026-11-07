@@ -210,6 +210,19 @@ function controls_screen:draw()
     end
     ui.text("WebM-стикеры: webm→gif→png кадры→анимация (runtime)", 24 + (self.webm_icon and 40 or 0), note_y, f.tiny, colors.muted)
     ui.text("B / MENU — назад   ↑↓ — прокрутка   START — стикеры", 24, h - 30, f.tiny, colors.muted)
+
+    -- Clickable mouse demo button
+    local btn_x, btn_y, btn_w, btn_h = 24, h - 90, 160, 30
+    ui.rect(btn_x, btn_y, btn_w, btn_h, colors.accent, 4)
+    ui.text("Клик мышью", btn_x + 12, btn_y + 8, f.tiny, colors.text)
+    self.mouse_button = {x = btn_x, y = btn_y, w = btn_w, h = btn_h}
+
+    -- Draw mouse cursor icon
+    local mx, my = love.mouse.getPosition()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.polygon("fill", mx, my, mx + 12, my + 4, mx + 4, my + 12)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.polygon("line", mx, my, mx + 12, my + 4, mx + 4, my + 12)
 end
 
 function controls_screen:keypressed(key)
@@ -259,6 +272,14 @@ function controls_screen:keypressed(key)
         max_y = max_y - 72 + 30
         local max_scroll = math.max(0, max_y - (h - 80))
         self.scroll = math.min(max_scroll, self.scroll + 30)
+    end
+end
+
+function controls_screen:mousepressed(x, y, button)
+    if button ~= 1 then return end
+    local b = self.mouse_button
+    if b and x >= b.x and x <= b.x + b.w and y >= b.y and y <= b.y + b.h then
+        self.tg.action_status = "Мышь работает!"
     end
 end
 
