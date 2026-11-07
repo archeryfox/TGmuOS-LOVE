@@ -114,6 +114,10 @@ local function render_markdown(text, x, y, width, font, color)
       end
       local seg_color = (style == "bold" and {1,1,1,1}) or (style == "italic" and {0.85,0.85,0.95,1}) or (style == "code" and {0.9,0.9,0.6,1}) or color
       ui.text(word, cur_x, cur_y, font, seg_color)
+      if style == "bold" then
+        -- fake bold: draw again with 1px offset
+        ui.text(word, cur_x + 1, cur_y, font, seg_color)
+      end
       cur_x = cur_x + font:getWidth(word .. " ")
       end
       -- newline within segment
