@@ -254,6 +254,8 @@ function love.load()
     ABXY_LAYOUT = load_saved_abxy()
     rebuild_gamepad_keys()
     fonts = ui.load_fonts(settings_scale)
+    love.mouse.setVisible(true)
+    love.mouse.setRelativeMode(false)
 
     start_account()
 
@@ -330,6 +332,8 @@ function love.update(dt)
     if current_scale ~= settings_scale then
         settings_scale = current_scale
         fonts = ui.load_fonts(settings_scale)
+    love.mouse.setVisible(true)
+    love.mouse.setRelativeMode(false)
         for _, s in pairs(screens) do
             if s.fonts then s.fonts = fonts end
         end
