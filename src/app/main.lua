@@ -338,6 +338,13 @@ function love.draw()
 end
 
 function love.keypressed(key)
+    if key == "volumeup" then
+        os.execute("/opt/muos/script/device/audio.sh U >/dev/null 2>&1")
+        return
+    elseif key == "volumedown" then
+        os.execute("/opt/muos/script/device/audio.sh D >/dev/null 2>&1")
+        return
+    end
     if key == "escape" and tg and tg.sticker_set_viewer then
         if current and current.sticker_fullscreen_image then current.sticker_fullscreen_image = nil; current.sticker_fullscreen_sticker = nil; return end
         tg.sticker_set_viewer = nil

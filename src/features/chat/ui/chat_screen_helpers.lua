@@ -82,14 +82,55 @@ local function conversation_items(messages)
             last_day = day
         end
         local content = message.content
-        local album_id = content and content["@type"] == "messagePhoto" and media_album_id(message)
-        local previous = items[#items]
-        if album_id and previous and previous.album_id == album_id and #previous.messages < 10 then
-            previous.messages[#previous.messages + 1] = message
-        elseif album_id then
-            items[#items + 1] = {album_id = album_id, messages = {message}}
+        local ctype = content and content["@type"]
+        -- Service/action messages: render centered like date labels
+        local action_text = nil
+        if ctype == "messageChatAddMembers" then
+            local members = content.member_user_ids or {}
+            action_text = "Участник(и) добавлены в чат"
+        elseif ctype == "messageChatDeleteMember" then
+            action_text = "Участник покинул чат"
+        elseif ctype == "messageChatChangeTitle" then
+            action_text = "Название чата изменено: " .. tostring(content.title or "")
+        elseif ctype == "messageChatChangePhoto" then
+            action_text = "Фото чата изменено"
+        elseif ctype == "messagePinMessage" then
+            action_text = "Сообщение закреплено"
+        elseif ctype == "messageBasicGroupChatCreate" or ctype == "messageSupergroupChatCreate" then
+            action_text = "Группа создана"
+        elseif ctype == "messageCall" then
+            local duration = tonumber(content.duration) or 0
+            local reason = content.discard_reason and content.discard_reason["@type"]
+            if reason == "callDiscardReasonMissed" then
+                action_text = "Пропущенный звонок"
+            elseif reason == "callDiscardReasonDeclined" then
+                action_text = "Звонок отклонён"
+            elseif reason == "callDiscardReasonDisconnected" then
+                action_text = "Звонок прерван"
+            elseif reason == "callDiscardReasonHungUp" then
+                if duration > 0 then
+                    action_text = string.format("Звонок завершён (%d:%02d)", math.floor(duration / 60), duration % 60)
+                else
+                    action_text = "Звонок завершён"
+                end
+            else
+                action_text = "Звонок"
+            end
+        elseif ctype == "messageChatSetTtl" then
+            action_text = "Таймер самоуничтожения изменён"
+        end
+        if action_text then
+            items[#items + 1] = {action_label = action_text}
         else
-            items[#items + 1] = {message = message}
+            local album_id = ctype == "messagePhoto" and media_album_id(message)
+            local previous = items[#items]
+            if album_id and previous and previous.album_id == album_id and #previous.messages < 10 then
+                previous.messages[#previous.messages + 1] = message
+            elseif album_id then
+                items[#items + 1] = {album_id = album_id, messages = {message}}
+            else
+                items[#items + 1] = {message = message}
+            end
         end
     end
     for index = #items, 1, -1 do

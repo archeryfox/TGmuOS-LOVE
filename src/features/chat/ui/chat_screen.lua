@@ -1074,6 +1074,9 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
         if item.date_label then
             heights[i] = 28
             total = total + heights[i] + 6
+        elseif item.action_label then
+            heights[i] = 24
+            total = total + heights[i] + 6
         elseif item.messages then
             local count = #item.messages
             local cols = math.min(3, count)
@@ -1224,6 +1227,16 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
                 local label_x = area_x + (area_w - label_w) / 2
                 ui.rect(label_x, y + 3, label_w, 22, colors.header, 10)
                 ui.printf(item.date_label, label_x, y + 6, label_w, "center", f.tiny, colors.muted)
+            end
+            if y < area_y - 100 then break end
+        elseif item.action_label then
+            local action_height = 24
+            y = y - action_height - 6
+            if y + action_height >= area_y and y <= area_y + area_h then
+                local label_w = math.min(area_w - 20, f.tiny:getWidth(item.action_label) + 22)
+                local label_x = area_x + (area_w - label_w) / 2
+                ui.rect(label_x, y + 2, label_w, 20, colors.header, 10)
+                ui.printf(item.action_label, label_x, y + 5, label_w, "center", f.tiny, colors.muted)
             end
             if y < area_y - 100 then break end
         else
