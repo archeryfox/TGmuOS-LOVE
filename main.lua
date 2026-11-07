@@ -411,6 +411,11 @@ function love.load()
         }),
         controls = controls_screen.new(fonts, tg),
     }
+    tg.on_chat_opened = function(chat_id)
+        if screens and screens.messenger then
+            screens.messenger.wants_open_chat = chat_id
+        end
+    end
     current = screens.auth
     current:enter()
 end
@@ -444,7 +449,12 @@ function love.update(dt)
                 return "Неизвестно"
             end,
         })
-        current = screens.auth
+                tg.on_chat_opened = function(chat_id)
+            if screens and screens.messenger then
+                screens.messenger.wants_open_chat = chat_id
+            end
+        end
+current = screens.auth
         current:enter()
     end
     if tg then
@@ -477,7 +487,11 @@ function love.update(dt)
 
     if current == screens.messenger then
         local ms = screens.messenger
-        if ms.wants_profile_user_id then
+        if ms.wants_open_chat then
+            local chat_id = ms.wants_open_chat
+            ms.wants_open_chat = nil
+            ms:select_chat(chat_id)
+        elseif ms.wants_profile_user_id then
             local user_id = ms.wants_profile_user_id
             ms.wants_profile_user_id = nil
             show_profile(tg.current_chat_id, user_id)

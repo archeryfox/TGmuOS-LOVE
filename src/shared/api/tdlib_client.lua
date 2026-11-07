@@ -185,6 +185,7 @@ function telegram:open_private_chat(user_id)
     self:send({
         ["@type"] = "createPrivateChat",
         user_id = user_id,
+        force = true,
     }, "open_private_chat:" .. tostring(user_id))
 end
 
@@ -610,6 +611,13 @@ function telegram:handle(object)
             self:handle_public_user_search(object)
         elseif extra:match("^chat_search_detail:") then
             self:handle_search_chat_detail(object)
+        elseif extra:match("^open_private_chat:") then
+            self:handle_new_chat(object)
+            local chat_id = object and object.id
+            if chat_id then
+                self.current_chat_id = chat_id
+                if self.on_chat_opened then self.on_chat_opened(chat_id) end
+            end
         else
             self:handle_new_chat(object)
         end

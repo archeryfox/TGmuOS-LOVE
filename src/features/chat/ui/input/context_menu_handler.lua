@@ -67,6 +67,31 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         if ms.wants_profile_self ~= nil then
             ms.wants_profile_self = true
         end
+    elseif item.action == "preview_text" then
+        if cm.message then
+            ms.text_preview = {loading = true, lines = {}, scroll = 0, message = cm.message}
+            local doc = cm.message.content and cm.message.content.document
+            local file = doc and doc.document
+            if file and file.id then
+                -- trigger download
+                if not (file["local"] and file["local"].is_downloading_completed) then
+                    tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "text_preview:" .. tostring(file.id))
+                else
+                    -- already downloaded; read immediately
+                    local path = file["local"].path
+                    if path then
+                        local lines = {}
+                        local f = io.open(path, "r")
+                        if f then
+                            for line in f:lines() do lines[#lines+1] = line end
+                            f:close()
+                        end
+                        ms.text_preview.loading = false
+                        ms.text_preview.lines = lines
+                    end
+                end
+            end
+        end
     elseif item.action == "open_sticker_pack" then
         if ms.tg.open_sticker_set then
             ms.tg:open_sticker_set(cm.message)

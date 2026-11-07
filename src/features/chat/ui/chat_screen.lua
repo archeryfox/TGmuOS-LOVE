@@ -157,6 +157,7 @@ function messenger_screen.new(fonts, tg)
     self.edit_message = nil
     self.edit_input = ""
     self.wants_profile_user_id = nil
+    self.wants_open_chat = nil
     self.fullscreen_media = nil
     self.sticker_pack_menu = nil
     self.last_media_click = nil
@@ -404,6 +405,23 @@ function messenger_screen:update(dt)
             self.message_cursor_target_id = nil
         end
     end
+    -- Text preview: load file when downloaded
+    if self.text_preview and self.text_preview.loading then
+        local msg = self.text_preview.message
+        local doc = msg and msg.content and msg.content.document
+        local file = doc and doc.document
+        local fl = file and file["local"]
+        if fl and fl.is_downloading_completed and fl.path and fl.path ~= "" then
+            local lines = {}
+            local f = io.open(fl.path, "r")
+            if f then
+                for line in f:lines() do lines[#lines+1] = line end
+                f:close()
+            end
+            self.text_preview.loading = false
+            self.text_preview.lines = lines
+        end
+    end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
 
     -- Hold-to-scroll: while nav keys are held, accumulate scroll deltas
@@ -504,6 +522,46 @@ function messenger_screen:draw()
     end
     self:draw_fullscreen_media(w, h)
     self:draw_sticker_pack(w, h)
+    self:draw_text_preview(w, h)
+end
+
+function messenger_screen:draw_text_preview(w, h)
+    local tp = self.text_preview
+    if not tp then return end
+    local f = self.fonts
+    local colors = ui.colors
+    love.graphics.setColor(0, 0, 0, 0.92)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    local panel_w = math.min(w - 32, 760)
+    local panel_h = math.min(h - 32, 620)
+    local panel_x = (w - panel_w) / 2
+    local panel_y = (h - panel_h) / 2
+    ui.rect(panel_x, panel_y, panel_w, panel_h, colors.panel, 8)
+    ui.outline(panel_x, panel_y, panel_w, panel_h, colors.accent, 8)
+    local title = "Текстовый файл"
+    if tp.message and tp.message.content and tp.message.content.document then
+        title = tp.message.content.document.file_name or title
+    end
+    ui.text(ui.fit(title, f.subtitle, panel_w - 24), panel_x + 12, panel_y + 8, f.subtitle, colors.text)
+    if tp.loading then
+        ui.text("Загрузка…", panel_x + 12, panel_y + 40, f.small, colors.muted)
+        return
+    end
+    local lines = tp.lines or {}
+    local line_h = f.tiny:getHeight() + 2
+    local visible = math.floor((panel_h - 60) / line_h)
+    local scroll = tp.scroll or 0
+    local max_scroll = math.max(0, #lines - visible)
+    if scroll > max_scroll then scroll = max_scroll; tp.scroll = scroll end
+    love.graphics.setScissor(panel_x + 8, panel_y + 36, panel_w - 16, panel_h - 52)
+    local y = panel_y + 36 - scroll * line_h
+    for i = scroll + 1, math.min(#lines, scroll + visible + 2) do
+        ui.text(ui.fit(lines[i] or "", f.tiny, panel_w - 24), panel_x + 12, y, f.tiny, colors.text)
+        y = y + line_h
+    end
+    love.graphics.setScissor()
+    ui.text(string.format("%d/%d строк · ↑↓ листать · PgUp/PgDn · Esc/B закрыть", scroll + 1, math.max(1, #lines)),
+        panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
 end
 
 function messenger_screen:draw_sticker_pack(w, h)
@@ -827,6 +885,14 @@ function messenger_screen:context_menu_items(message)
     if content_type == "messageSticker" then
         items[#items + 1] = {label = "Стикерпак", action = "open_sticker_pack"}
         items[#items + 1] = {label = "Загрузить стикер", action = "download_sticker"}
+    end
+    if content_type == "messageDocument" then
+        local doc = message.content.document
+        local mime = doc and (doc.mime_type or "")
+        local fname = doc and (doc.file_name or "")
+        if mime:match("^text/") or fname:match("%.txt$") or fname:match("%.log$") or fname:match("%.md$") or fname:match("%.json$") or fname:match("%.lua$") then
+            items[#items + 1] = {label = "Просмотреть текст", action = "preview_text"}
+        end
     end
 
     -- "Скачать в hi-res" — для фото загружает最高 разрешение

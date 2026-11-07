@@ -396,6 +396,26 @@ self.fullscreen_zoom = 1
         if self.keyboard and self.keyboard.visible then
             if self:handle_virtual_keyboard(key) then return end
         end
+        if self.text_preview then
+            local tp = self.text_preview
+            if key == "escape" or key == "b" then
+                self.text_preview = nil
+                return
+            elseif key == "up" then
+                tp.scroll = math.max(0, (tp.scroll or 0) - 1)
+                return
+            elseif key == "down" then
+                tp.scroll = (tp.scroll or 0) + 1
+                return
+            elseif key == "pageup" then
+                tp.scroll = math.max(0, (tp.scroll or 0) - 10)
+                return
+            elseif key == "pagedown" then
+                tp.scroll = (tp.scroll or 0) + 10
+                return
+            end
+            return
+        end
         if self.tg.sticker_set_viewer then
             if self.sticker_fullscreen_image then
                 if key == "escape" or key == "b" then
