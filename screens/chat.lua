@@ -48,6 +48,8 @@ end
 function chat:draw()
     local f = self.fonts
     
+    local bg = (self.chatBg and self.chatBg) or COLORS.bg
+    ui.rect(0, 0, 640, 480, bg)
     ui.rect(0, 0, 640, 48, COLORS.header)
     ui.drawText("< " .. self.chatTitle, 16, 12, f.normal, COLORS.text)
     
