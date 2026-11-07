@@ -31,6 +31,7 @@ function chat_list_renderer.draw(ms, left_width, h)
 
     for index = ms.model.list_offset + 1, math.min(#chat_list, ms.model.list_offset + visible) do
         local chat = chat_list[index]
+        if chat and chat.id then ms.tg:ensure_chat_photo(chat.id) end
         local y = HEADER_HEIGHT + (index - ms.model.list_offset - 1) * ITEM_HEIGHT
         local is_selected = index == ms.model.selected
         local is_current = ms.tg.current_chat_id == chat.id

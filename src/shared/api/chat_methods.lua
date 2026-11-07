@@ -89,7 +89,6 @@ return function(telegram)
         self:rebuild_chats()
         self:rebuild_archive_chats()
         self:rebuild_filter_chats()
-        self:ensure_chat_photo(chat.id)
     end
 
     function telegram:handle_chat_last_message(update)
