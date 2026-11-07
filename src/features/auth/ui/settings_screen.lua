@@ -309,8 +309,8 @@ function settings_screen:activate_item(item)
             self.tg.action_error = "Вибрация недоступна (нет API)"
         end
     elseif item.id == "minimize" then
-        if love.event and love.event.quit then
-            love.event.quit()
+        if love.window and love.window.minimize then
+            love.window.minimize()
             self.tg.action_status = "Приложение свёрнуто"
         end
     elseif item.id == "abxy" then
@@ -488,8 +488,8 @@ function settings_screen:mousepressed(x, y, button)
                     self.tg.action_error = "Вибрация недоступна (нет API)"
                 end
             elseif item.id == "minimize" then
-                if love.event and love.event.quit then
-                    love.event.quit()
+                if love.window and love.window.minimize then
+                    love.window.minimize()
                     self.tg.action_status = "Приложение свёрнуто"
                 end
             elseif item.id == "abxy" then

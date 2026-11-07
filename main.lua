@@ -427,7 +427,7 @@ handle_key = function(key, from_gamepad)
         return
     end
     if key == "home" or key == "m" then
-        if love.event and love.event.quit then love.event.quit() end
+        if love.window and love.window.minimize then love.window.minimize() end
         return
     end
     if key == "escape" and current == screens.auth then
