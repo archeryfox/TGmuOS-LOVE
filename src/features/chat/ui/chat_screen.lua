@@ -566,8 +566,20 @@ function messenger_screen:draw_sticker_pack(w, h)
         end
         love.graphics.setScissor()
     end
-    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · Esc или клик вне окна — закрыть",
+    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · клик по стикеру — предпросмотр, Esc — закрыть",
         panel_x + 18, panel_y + panel_h - 25, fonts.tiny, colors.muted)
+
+    -- Fullscreen sticker preview
+    if self.sticker_fullscreen_image then
+        love.graphics.setColor(0, 0, 0, 0.9)
+        love.graphics.rectangle("fill", 0, 0, w, h)
+        local img = self.sticker_fullscreen_image
+        local fit = math.min((w - 48) / img:getWidth(), (h - 48) / img:getHeight())
+        local dw, dh = img:getWidth() * fit, img:getHeight() * fit
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(img, (w - dw) / 2, (h - dh) / 2, 0, fit, fit)
+        ui.text("Esc / B — закрыть предпросмотр", 12, h - 22, fonts.tiny, colors.muted)
+    end
 end
 
 function messenger_screen:draw_notifications(f, colors, w)

@@ -128,32 +128,35 @@ return function(messenger_screen, layout)
         end
     end
 
+    function messenger_screen:open_sticker_pack_list()
+        if not self.tg.installed_sticker_sets or #self.tg.installed_sticker_sets == 0 then
+            self.tg:load_installed_sticker_sets()
+        end
+        local items = {}
+        for _, set in ipairs(self.tg.installed_sticker_sets or {}) do
+            local title = set.title or set.name or "Стикерпак"
+            items[#items + 1] = {label = title, action = "open_sticker_pack_by_name", name = set.name}
+        end
+        if #items == 0 then
+            items = {
+                {label = "Набор 1 (Zhivchiks)", action = "open_sticker_pack_by_name", name = "Zhivchiks"},
+                {label = "Набор 2 (HotCherry)", action = "open_sticker_pack_by_name", name = "HotCherry"},
+            }
+        end
+        items[#items + 1] = {label = "Открыть по ссылке", action = "open_sticker_pack_by_link", name = ""}
+        self.context_menu = {
+            x = 120,
+            y = 160,
+            items = items,
+            index = 1,
+        }
+        self.menu_anim = 0
+        if self.keyboard then self.keyboard.visible = false end
+    end
+
     function messenger_screen:handle_virtual_keyboard(key)
         if key == "f1" then
-            -- Load installed sticker sets if not loaded yet
-            if not self.tg.installed_sticker_sets or #self.tg.installed_sticker_sets == 0 then
-                self.tg:load_installed_sticker_sets()
-            end
-            local items = {}
-            for _, set in ipairs(self.tg.installed_sticker_sets or {}) do
-                local title = set.title or set.name or "Стикерпак"
-                items[#items + 1] = {label = title, action = "open_sticker_pack_by_name", name = set.name}
-            end
-            if #items == 0 then
-                items = {
-                    {label = "Набор 1 (Zhivchiks)", action = "open_sticker_pack_by_name", name = "Zhivchiks"},
-                    {label = "Набор 2 (HotCherry)", action = "open_sticker_pack_by_name", name = "HotCherry"},
-                }
-            end
-            items[#items + 1] = {label = "Открыть по ссылке", action = "open_sticker_pack_by_link", name = ""}
-            self.context_menu = {
-                x = 120,
-                y = 160,
-                items = items,
-                index = 1,
-            }
-            self.menu_anim = 0
-            if self.keyboard then self.keyboard.visible = false end
+            self:open_sticker_pack_list()
             return true
         end
         local handled, result = self.keyboard:keypressed(key)
@@ -165,6 +168,8 @@ return function(messenger_screen, layout)
                 self:keyboard_backspace()
             elseif result.kind == "enter" then
                 self:keyboard_enter()
+            elseif result.kind == "stickers" then
+                self:open_sticker_pack_list()
             end
         end
         return true
@@ -392,7 +397,37 @@ self.fullscreen_zoom = 1
             if self:handle_virtual_keyboard(key) then return end
         end
         if self.tg.sticker_set_viewer then
-            if key == "escape" then self.tg.sticker_set_viewer = nil end
+            if self.sticker_fullscreen_image then
+                if key == "escape" or key == "b" then self.sticker_fullscreen_image = nil end
+                return
+            end
+            local pack = self.tg.sticker_set_viewer
+            if pack and not pack.loading and not pack.error and pack.stickers and #pack.stickers > 0 then
+                local width, height = ui.width(), ui.height()
+                local panel_w = math.min(width - 48, 760)
+                local panel_h = math.min(height - 48, 620)
+                local grid_w = panel_w - 32
+                local grid_h = panel_h - 92
+                local columns = math.max(1, math.floor(grid_w / 112))
+                local cell_h = math.min(116, grid_w / columns)
+                local rows_per_page = math.max(1, math.floor(grid_h / cell_h))
+                local row_count = math.ceil(#pack.stickers / columns)
+                local max_scroll = math.max(0, row_count - rows_per_page)
+                if key == "up" or key == "kp8" then
+                    pack.scroll = math.max(0, (pack.scroll or 0) - 1)
+                    return
+                elseif key == "down" or key == "kp2" then
+                    pack.scroll = math.min(max_scroll, (pack.scroll or 0) + 1)
+                    return
+                elseif key == "pageup" then
+                    pack.scroll = math.max(0, (pack.scroll or 0) - rows_per_page)
+                    return
+                elseif key == "pagedown" then
+                    pack.scroll = math.min(max_scroll, (pack.scroll or 0) + rows_per_page)
+                    return
+                end
+            end
+            if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             return
         end
         if self.sticker_link_mode then
@@ -797,8 +832,32 @@ self.fullscreen_zoom = 1
                 local close_x, close_y = panel_x + panel_w - 48, panel_y + 8
                 if x >= close_x and x <= panel_x + panel_w and y >= close_y and y <= close_y + 44 then
                     self.tg.sticker_set_viewer = nil
+                    self.sticker_fullscreen_image = nil
                 elseif x < panel_x or x > panel_x + panel_w or y < panel_y or y > panel_y + panel_h then
                     self.tg.sticker_set_viewer = nil
+                    self.sticker_fullscreen_image = nil
+                else
+                    -- click inside grid: select sticker for fullscreen preview
+                    local grid_x, grid_y = panel_x + 16, panel_y + 58
+                    local grid_w, grid_h = panel_w - 32, panel_h - 92
+                    local columns = math.max(1, math.floor(grid_w / 112))
+                    local cell_w = grid_w / columns
+                    local cell_h = math.min(116, cell_w)
+                    if x >= grid_x and x <= grid_x + grid_w and y >= grid_y and y <= grid_y + grid_h then
+                        local col = math.floor((x - grid_x) / cell_w)
+                        local row = math.floor((y - grid_y) / cell_h)
+                        local pack = self.tg.sticker_set_viewer
+                        local rows_per_page = math.max(1, math.floor(grid_h / cell_h))
+                        local first_index = (pack.scroll or 0) * columns + 1
+                        local idx = first_index + row * columns + col
+                        if pack.stickers and idx >= 1 and idx <= #pack.stickers then
+                            local sticker = pack.stickers[idx]
+                            local file = sticker and sticker.sticker
+                            local entry = file and self.tg.stickers and self.tg.stickers[file.id]
+                            local img = entry and (entry.image or (entry.frames and entry.frames[1]))
+                            if img then self.sticker_fullscreen_image = img end
+                        end
+                    end
                 end
             end
             return
