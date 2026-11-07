@@ -1,0 +1,143 @@
+-- src/features/auth/ui/auth_screen.lua — экран авторизации (QR + 2FA)
+local ui = require("src.shared.ui.ui_kit")
+local qr = require("src.shared.lib.qr")
+local auth_model = require("src.features.auth.model.auth_model")
+
+local auth_screen = {}
+
+function auth_screen.new(fonts, tg)
+    local self = {}
+    self.fonts = fonts
+    self.tg = tg
+    self.model = auth_model.new(tg)
+    self.qr_link = nil
+    self.qr_image = nil
+    self.qr_size = 0
+    self.qr_error = ""
+    self.password = ""
+    return setmetatable(self, {__index = auth_screen})
+end
+
+function auth_screen:enter()
+    self.password = ""
+end
+
+function auth_screen:update(dt)
+    if self.tg.qr_link ~= self.qr_link then
+        self.qr_link = self.tg.qr_link
+        if self.qr_link and self.qr_link ~= "" then
+            local matrix, size = qr.encode(self.qr_link)
+            if matrix then
+                self.qr_image = qr.make_image(matrix, size)
+                self.qr_size = size
+                self.qr_error = ""
+            else
+                self.qr_image = nil
+                self.qr_size = 0
+                self.qr_error = "Ссылка авторизации не помещается в поддерживаемый QR-код"
+            end
+        else
+            self.qr_image = nil
+            self.qr_size = 0
+            self.qr_error = ""
+        end
+    end
+end
+
+function auth_screen:draw()
+    local f = self.fonts
+    local w = ui.width()
+    local h = ui.height()
+    local colors = ui.colors
+
+    ui.rect(0, 0, w, h, colors.bg)
+    ui.rect(0, 0, w, 56, colors.header)
+    ui.text("Telegram", 24, 15, f.subtitle, colors.text)
+    ui.text("LÖVE + TDLib", w - 150, 20, f.small, colors.muted)
+    ui.printf(self.model:get_route_text(), 16, 59, w - 32, "center", f.tiny, colors.muted)
+    local connection_color = self.tg.proxy_probe_state == "failed" and colors.red
+        or self.tg.proxy_probe_state == "ready" and colors.green or colors.muted
+    ui.printf(self.model:get_connection_text(), 16, 74, w - 32, "center", f.tiny, connection_color)
+    ui.printf(self.model:get_dc_text(), 16, 88, w - 32, "center", f.tiny, colors.muted)
+    ui.text("Y / T — сменить DC", 24, h - 32, f.tiny, colors.muted)
+
+    if self.model:is_password_mode() then
+        self:draw_password(w, h)
+        return
+    end
+
+    local status_y = 108
+    if self.model:has_error() then
+        ui.printf(self.model:get_error(), 80, 104, w - 160, "center", f.small, colors.red)
+        local _, error_lines = f.small:getWrap(self.model:get_error(), w - 160)
+        status_y = 104 + math.max(1, #error_lines) * f.small:getHeight() + 8
+    end
+
+    ui.printf(self.model:get_status_text(), 80, status_y, w - 160, "center", f.normal, colors.text)
+
+    if self.qr_image then
+        local available = math.min(w * 0.55, h - 300)
+        local scale = math.max(3, math.floor(available / (self.qr_size + 8)))
+        local total = (self.qr_size + 8) * scale
+        local x = math.floor((w - total) / 2)
+        local y = 150
+        qr.draw(self.qr_image, x, y, scale, 4)
+
+        ui.printf("Откройте Telegram на телефоне", 80, y + total + 20, w - 160, "center", f.normal, colors.text)
+        ui.printf("Настройки → Устройства → Подключить устройство", 80, y + total + 48, w - 160, "center", f.small, colors.muted)
+        ui.printf("Наведите камеру на QR-код", 80, y + total + 74, w - 160, "center", f.small, colors.muted)
+        ui.printf("QR-код обновляется автоматически", 80, h - 70, w - 160, "center", f.tiny, colors.muted)
+    else
+        if self.qr_error ~= "" then
+            ui.printf(self.qr_error, 80, 220, w - 160, "center", f.normal, colors.red)
+        else
+            ui.printf("QR-код ещё не получен", 80, 220, w - 160, "center", f.normal, colors.muted)
+            ui.printf("Проверьте подключение к сети и параметры api_id/api_hash", 80, 250, w - 160, "center", f.small, colors.muted)
+        end
+    end
+
+    ui.text("Esc — выход", w - 100, h - 32, f.tiny, colors.muted)
+end
+
+function auth_screen:draw_password(w, h)
+    local f = self.fonts
+    local colors = ui.colors
+    local box_w = math.min(560, w - 120)
+    local x = math.floor((w - box_w) / 2)
+    local y = 220
+
+    ui.printf("Двухфакторная аутентификация", 80, 150, w - 160, "center", f.subtitle, colors.text)
+    if self.model:get_password_hint() ~= "" then
+        ui.printf(self.model:get_password_hint(), 80, 185, w - 160, "center", f.small, colors.muted)
+    end
+    ui.rect(x, y, box_w, 48, colors.panel, 8)
+    ui.outline(x, y, box_w, 48, colors.accent, 8)
+    local shown = string.rep("•", math.max(0, #self.password))
+    if shown == "" then shown = "Пароль" end
+    ui.text(shown, x + 16, y + 13, f.normal, self.password == "" and colors.muted or colors.text)
+    ui.printf("Enter — подтвердить", 80, y + 70, w - 160, "center", f.small, colors.muted)
+    if self.model:has_error() then
+        ui.printf(self.model:get_error(), 80, y + 105, w - 160, "center", f.small, colors.red)
+    end
+end
+
+function auth_screen:textinput(text)
+    if self.model:is_password_mode() then
+        self.password = self.password .. text
+    end
+end
+
+function auth_screen:keypressed(key)
+    if not self.model:is_password_mode() then return end
+    if key == "backspace" then
+        self.password = ui.remove_last_utf8(self.password)
+    elseif key == "return" or key == "kpenter" then
+        self.tg:submit_password(self.password)
+        self.password = ""
+    end
+end
+
+function auth_screen:mousepressed() end
+function auth_screen:wheelmoved() end
+
+return auth_screen

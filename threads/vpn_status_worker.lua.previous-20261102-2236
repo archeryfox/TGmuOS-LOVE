@@ -1,0 +1,38 @@
+local json = require("dkjson")
+local in_channel = love.thread.getChannel("vpn_status_in")
+local out_channel = love.thread.getChannel("vpn_status_out")
+local init = in_channel:demand()
+
+local function shell_quote(value)
+    return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local command = "MUVPN_CONFIG_DIR=" .. shell_quote(init.config_dir)
+    .. " " .. shell_quote(init.python)
+    .. " " .. shell_quote(init.script)
+    .. " health 2>/dev/null"
+
+while true do
+    local pipe = io.popen(command, "r")
+    local status
+    if pipe then
+        local output = pipe:read("*a")
+        local ok = pipe:close()
+        if ok then
+            local decoded, value = pcall(json.decode, output)
+            if decoded and type(value) == "table" then
+                status = value
+            end
+        end
+    end
+
+    out_channel:push(status or {
+        connected = false,
+        unavailable = true,
+    })
+
+    love.timer.sleep(10)
+    if in_channel:pop() == "quit" then
+        break
+    end
+end

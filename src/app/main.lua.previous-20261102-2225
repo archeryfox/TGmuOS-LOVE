@@ -1,0 +1,387 @@
+-- src/app/main.lua — точка входа LÖVE (FSD структура)
+local ui = require("src.shared.ui.ui_kit")
+local telegram = require("src.shared.api.tdlib_client")
+local auth_screen = require("src.features.auth.ui.auth_screen")
+local messenger_screen = require("src.features.chat.ui.chat_screen")
+local profile_screen = require("src.features.auth.ui.profile_screen")
+local settings_screen = require("src.features.auth.ui.settings_screen")
+
+local tg
+local current
+local screens
+local fonts
+local settings_scale = 1.0
+local settings_open = false
+local gamepad_guide_held = false
+local gamepad_trigger_held = {}
+
+local function show_profile(chat_id, user_id)
+    if not screens then return end
+    local profile = screens.profile
+    profile.chat_id = chat_id
+    profile.user_id = user_id
+    profile.is_me = false
+    current = profile
+    profile:enter()
+end
+
+local function parse_conf(path)
+    local handle = io.open(path, "r")
+    if not handle then return nil end
+    local values = {}
+    for line in handle:lines() do
+        local key, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
+        if key then values[key] = value end
+    end
+    handle:close()
+    return values
+end
+
+local function load_settings()
+    local path = os.getenv("TG_CONFIG")
+    if not path or path == "" then
+        local home = os.getenv("HOME") or ""
+        path = home .. "/.config/tgmuos_love/telegram.conf"
+    end
+    local config = parse_conf(path) or {}
+
+    local environment = os.getenv("TG_ENVIRONMENT") or config.environment or "production"
+    if environment ~= "production" and environment ~= "test" then
+        return nil, nil, nil, "environment должен быть production или test"
+    end
+
+    local api_id = tonumber(os.getenv("TG_API_ID") or config.api_id)
+    local api_hash = os.getenv("TG_API_HASH") or config.api_hash
+    if not api_id or not api_hash or api_hash == "" then
+        return nil, nil, nil, nil
+    end
+
+    local proxy_type = os.getenv("TG_PROXY_TYPE") or config.proxy_type
+    local proxy = nil
+    if proxy_type and proxy_type ~= "" then
+        local port = tonumber(os.getenv("TG_PROXY_PORT") or config.proxy_port)
+        local server = os.getenv("TG_PROXY_SERVER") or config.proxy_server
+        if port and server and server ~= "" then
+            proxy = {
+                type = proxy_type,
+                server = server,
+                port = port,
+                username = os.getenv("TG_PROXY_USER") or config.proxy_user or "",
+                password = os.getenv("TG_PROXY_PASSWORD") or config.proxy_password or "",
+                secret = os.getenv("TG_PROXY_SECRET") or config.proxy_secret or "",
+                path = os.getenv("TG_PROXY_PATH") or config.proxy_path or "",
+            }
+        end
+    end
+
+    return api_id, api_hash, proxy, environment
+end
+
+local function extract_native(relative_path)
+    local info = love.filesystem.getInfo(relative_path)
+    if not info then return nil, "не найден " .. relative_path end
+    local data = love.filesystem.read(relative_path)
+    if not data then return nil, "не удалось прочитать " .. relative_path end
+    love.filesystem.createDirectory("native")
+    local filename = relative_path:match("([^/]+)$")
+    local destination = "native/" .. filename
+    local existing = love.filesystem.getInfo(destination)
+    if not existing or existing.size ~= #data then
+        local ok, error_message = love.filesystem.write(destination, data)
+        if not ok then
+            return nil, tostring(error_message)
+        end
+    end
+    return love.filesystem.getSaveDirectory() .. "/" .. destination
+end
+
+local function load_database_key()
+    local key = love.filesystem.read("tdlib.key")
+    if key then
+        if #key ~= 32 then
+            return nil, "TDLib encryption key has an invalid length"
+        end
+        return key
+    end
+
+    local random = io.open("/dev/urandom", "rb")
+    if not random then
+        return nil, "Cannot open the system random source"
+    end
+    key = random:read(32)
+    random:close()
+    if not key or #key ~= 32 then
+        return nil, "Cannot read a TDLib encryption key"
+    end
+
+    local ok, error_message = love.filesystem.write("tdlib.key", key)
+    if not ok then
+        return nil, "Cannot save TDLib encryption key: " .. tostring(error_message)
+    end
+    local ffi = require("ffi")
+    ffi.cdef[[
+        int chmod(const char* pathname, unsigned int mode);
+    ]]
+    local path = love.filesystem.getSaveDirectory() .. "/tdlib.key"
+    if ffi.C.chmod(path, 384) ~= 0 then
+        return nil, "Cannot secure TDLib encryption key"
+    end
+    return key
+end
+
+function love.load()
+    io.stdout:setvbuf("no")
+    love.graphics.setBackgroundColor(ui.colors.bg)
+    fonts = ui.load_fonts(settings_scale)
+
+    tg = telegram.new()
+    local library, library_error = extract_native("lib/libtdjson.so")
+    local api_id, api_hash, proxy, environment = load_settings()
+    local database_key, key_error = load_database_key()
+    if not library then
+        tg.auth_error = "TDLib: " .. tostring(library_error)
+    elseif not api_id then
+        tg.auth_error = environment or "Не заданы api_id/api_hash. Укажите TG_API_ID и TG_API_HASH или ~/.config/tgmuos_love/telegram.conf"
+    elseif not database_key then
+        tg.auth_error = key_error
+    else
+        print("Telegram DC environment: " .. environment)
+        if proxy then
+            print(string.format("Telegram proxy configured: %s %s:%d",
+                proxy.type, proxy.server, proxy.port))
+        else
+            print("Telegram proxy not configured")
+        end
+        local save_directory = love.filesystem.getSaveDirectory()
+        local tdlib_suffix = environment == "test" and "-test" or ""
+        tg:start({
+            lib = library,
+            db = save_directory .. "/tdlib" .. tdlib_suffix,
+            files = save_directory .. "/tdlib_files" .. tdlib_suffix,
+            log = save_directory .. "/tdlib.log",
+            api_id = api_id,
+            api_hash = api_hash,
+            use_test_dc = environment == "test",
+            database_key = database_key,
+            proxy = proxy,
+        })
+    end
+
+    screens = {
+        auth = auth_screen.new(fonts, tg),
+        messenger = messenger_screen.new(fonts, tg),
+        profile = profile_screen.new(fonts, tg),
+        settings = settings_screen.new(fonts, tg),
+    }
+    current = screens.auth
+    current:enter()
+end
+
+function love.update(dt)
+    if tg then tg:update(dt) end
+
+    if tg.ready and current ~= screens.messenger and current ~= screens.profile and current ~= screens.settings then
+        current = screens.messenger
+        current:enter()
+    elseif not tg.ready and current ~= screens.auth then
+        current = screens.auth
+        current:enter()
+    end
+
+    if settings_open then
+        current = screens.settings
+        settings_open = false
+        current:enter()
+        screens.messenger.wants_settings = false
+    end
+
+    if current.update then current:update(dt) end
+
+    if current == screens.messenger then
+        local ms = screens.messenger
+        if ms.wants_profile_user_id then
+            local user_id = ms.wants_profile_user_id
+            ms.wants_profile_user_id = nil
+            show_profile(tg.current_chat_id, user_id)
+        elseif ms.wants_profile_chat_id then
+            local chat_id = ms.wants_profile_chat_id
+            ms.wants_profile_chat_id = nil
+            show_profile(chat_id)
+        end
+    end
+
+    -- Reapply fonts if scale changed
+    local current_scale = ui.get_scale()
+    if current_scale ~= settings_scale then
+        settings_scale = current_scale
+        fonts = ui.load_fonts(settings_scale)
+        for _, s in pairs(screens) do
+            if s.fonts then s.fonts = fonts end
+        end
+    end
+end
+
+function love.draw()
+    if current and current.draw then current:draw() end
+end
+
+function love.keypressed(key)
+    if key == "menu" or key == "application" or key == "go" or key == "acsearch" or key == "achome" then
+        gamepad_guide_held = true
+        return
+    end
+    if key == "escape" and current == screens.auth then
+        love.event.quit()
+        return
+    end
+    if key == "escape" and current == screens.messenger and not tg.current_chat_id then
+        love.event.quit()
+        return
+    end
+    if key == "escape" and current == screens.settings then
+        settings_open = false
+        current = screens.messenger
+        current:enter()
+        return
+    end
+
+    if key == "escape" and current == screens.profile then
+        current = screens.messenger
+        current:enter()
+        return
+    end
+
+    if key == "escape" and current == screens.messenger then
+        local ms = screens.messenger
+        ms.context_menu = nil
+        ms.forward_mode = false
+        ms.forward_from_chat_id = nil
+        ms.edit_mode = false
+        ms.edit_message = nil
+        ms.edit_input = ""
+        if next(ms.selected_messages) then
+            ms.selected_messages = {}
+            return
+        end
+    end
+
+    if key == "f1" and current == screens.messenger then
+        settings_open = true
+        return
+    end
+
+    if key == "p" and current == screens.messenger then
+        local chat_id, _, user_id = screens.messenger:get_profile_target()
+        if chat_id then
+            show_profile(chat_id, user_id)
+        end
+        return
+    end
+
+    if (key == "v" and love.keyboard.isDown("lctrl", "rctrl")) and current.textinput then
+        current:textinput(love.system.getClipboardText())
+        return
+    end
+
+    if current.keypressed then current:keypressed(key) end
+
+    if current == screens.messenger and screens.messenger.wants_settings then
+        screens.messenger.wants_settings = false
+        settings_open = true
+    end
+
+end
+
+function love.keyreleased(key)
+    if key == "menu" or key == "application" or key == "go" or key == "acsearch" or key == "achome" then
+        gamepad_guide_held = false
+    end
+end
+
+function love.textinput(text)
+    if current.textinput then current:textinput(text) end
+end
+
+function love.wheelmoved(x, y)
+    if current.wheelmoved then current:wheelmoved(x, y) end
+end
+
+function love.mousepressed(x, y, button)
+    if current.mousepressed then current:mousepressed(x, y, button) end
+    if current == screens.messenger then
+        local ms = screens.messenger
+        if ms.wants_profile_user_id then
+            local user_id = ms.wants_profile_user_id
+            ms.wants_profile_user_id = nil
+            show_profile(tg.current_chat_id, user_id)
+        elseif ms.wants_profile_chat_id then
+            local chat_id = ms.wants_profile_chat_id
+            ms.wants_profile_chat_id = nil
+            show_profile(chat_id)
+        end
+    end
+end
+
+function love.gamepadpressed(_, button)
+    if button == "guide" then
+        gamepad_guide_held = true
+        return
+    end
+    if button == "a" and gamepad_guide_held then
+        love.event.quit()
+        return
+    end
+    if current == screens.messenger and button == "x" then
+        current.search_active = not current.search_active
+        current:set_search_query("", false)
+        return
+    elseif current == screens.messenger and button == "y" then
+        current:toggle_archive()
+        return
+    end
+    local keys = {
+        dpup = "up",
+        dpdown = "down",
+        dpleft = "left",
+        dpright = "right",
+        a = "return",
+        b = "escape",
+        start = "return",
+        back = "f1",
+        leftshoulder = "pageup",
+        rightshoulder = "pagedown",
+        triggerleft = "pageup",
+        triggerright = "pagedown",
+        lefttrigger = "pageup",
+        righttrigger = "pagedown",
+    }
+    local key = keys[button]
+    if key then love.keypressed(key) end
+end
+
+function love.gamepadreleased(_, button)
+    if button == "guide" then
+        gamepad_guide_held = false
+    end
+    if button == "triggerleft" or button == "triggerright"
+        or button == "lefttrigger" or button == "righttrigger" then
+        gamepad_trigger_held[button] = false
+    end
+end
+
+function love.gamepadaxis(joystick, axis, value)
+    if axis ~= "triggerleft" and axis ~= "triggerright"
+        and axis ~= "lefttrigger" and axis ~= "righttrigger" then return end
+    local pressed = value >= 0.5
+    if pressed and not gamepad_trigger_held[axis] then
+        gamepad_trigger_held[axis] = true
+        love.gamepadpressed(joystick, axis)
+    elseif not pressed and gamepad_trigger_held[axis] then
+        love.gamepadreleased(joystick, axis)
+    end
+end
+
+function love.quit()
+    if tg then tg:shutdown() end
+    return false
+end

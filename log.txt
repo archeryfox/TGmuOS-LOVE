@@ -1,0 +1,4 @@
+[2026-11-07 04:08:29] TDLib: authorizationStateWaitPhoneNumber (previous=authorizationStateWaitTdlibParameters, logout_pending=nil)
+[2026-11-07 04:08:29] TDLib: sending requestQrCodeAuthentication
+[2026-11-07 04:22:42] TDLib error: code=500 extra=qr message=Request aborted
+[2026-11-07 04:22:42] TDLib: authorizationStateClosed

@@ -1,0 +1,634 @@
+local json = require("dkjson")
+
+local telegram = {}
+telegram.__index = telegram
+require("src.shared.api.chat_methods")(telegram)
+require("src.shared.api.message_methods")(telegram)
+require("src.shared.api.media_methods")(telegram)
+require("src.shared.api.media_conversion")(telegram)
+require("src.shared.api.media_avatars")(telegram)
+require("src.shared.api.media_playback")(telegram)
+
+function telegram.new()
+    local self = setmetatable({}, telegram)
+    self.worker = nil
+    self.in_channel = love.thread.getChannel("td_in")
+    self.out_channel = love.thread.getChannel("td_out")
+    self.anim_in = love.thread.getChannel("anim_in")
+    self.anim_out = love.thread.getChannel("anim_out")
+    self.sequence = 0
+
+    self.auth_state = "starting"
+    self.ready = false
+    self.closed = false
+    self.qr_link = ""
+    self.qr_requested_at = 0
+    self.qr_request_pending = false
+    self.password_hint = ""
+    self.auth_error = ""
+    self.action_status = ""
+    self.action_error = ""
+    self.proxy_added = false
+
+    self.me = nil
+    self.users = {}
+    self.requested_users = {}
+    self.chats = {}
+    self.chats_by_id = {}
+    self.chats_loaded = false
+    self.archive_chats = {}
+    self.archive_chats_by_id = {}
+    self.archive_loaded = false
+    self.archive_load_pending = false
+    self.archive_load_error = nil
+    self.pending_archive_changes = {}
+    self.profile_media = {}
+    self.pending_chat_mute_settings = {}
+    self.chat_search_generation = 0
+    self.chat_search_query = ""
+    self.search_chat_results = {}
+    self.public_search_generation = 0
+    self.public_search_query = ""
+    self.public_search_results = {}
+    self.public_search_user_pending = false
+    self.dialog_search_generation = {}
+    self.dialog_search_query = {}
+    self.dialog_search_results = {}
+    self.messages = {}
+    self.history_state = {}
+    self.current_chat_id = nil
+    self.photos = {}
+    self.photo_by_message = {}
+    self.stickers = {}
+    self.sticker_by_message = {}
+    self.sticker_thumbnail_by_file = {}
+    self.sticker_thumbnail_for_file = {}
+    self.sticker_format_by_file = {}
+    self.animations = {}
+    self.animation_by_message = {}
+    self.videos = {}
+    self.video_by_message = {}
+    self.voice_notes = {}
+    self.voice_by_message = {}
+    self.audios = {}
+    self.audio_by_message = {}
+    self.user_photos = {}
+    self.user_photo_by_id = {}
+    self.chat_photos = {}
+    self.chat_photo_by_id = {}
+
+    self.on_ready = nil
+    return self
+end
+
+function telegram:user_status_text(user_id)
+    if not user_id then return "" end
+    self:ensure_user(user_id)
+    local user = self.users[user_id]
+    local status = user and user.status
+    local kind = status and status["@type"]
+    if kind == "userStatusOnline" then
+        if (tonumber(status.expires) or 0) > os.time() then return "в сети" end
+        return "недавно был(а) в сети"
+    elseif kind == "userStatusOffline" then
+        local was_online = tonumber(status.was_online) or 0
+        if was_online > 0 then
+            return "был(а) в сети " .. os.date("%d.%m %H:%M", was_online)
+        end
+    elseif kind == "userStatusRecently" then
+        return "был(а) в сети недавно"
+    elseif kind == "userStatusLastWeek" then
+        return "был(а) в сети на этой неделе"
+    elseif kind == "userStatusLastMonth" then
+        return "был(а) в сети в этом месяце"
+    elseif kind == "userStatusEmpty" then
+        return "давно не был(а) в сети"
+    end
+    return "статус не указан"
+end
+
+function telegram:start(options)
+    self.in_channel:clear()
+    self.out_channel:clear()
+    self.worker = love.thread.newThread("threads/tdlib_worker.lua")
+    self.worker:start()
+    self.in_channel:push({
+        type = "init",
+        lib = options.lib,
+        db = options.db,
+        files = options.files,
+        log = options.log,
+    })
+    self.options = options
+end
+
+function telegram:send(request, extra)
+    self.sequence = self.sequence + 1
+    request["@extra"] = extra or ("req:" .. tostring(self.sequence))
+    local encoded = json.encode(request)
+    if encoded then
+        self.in_channel:push({type = "send", req = encoded})
+    end
+    return request["@extra"]
+end
+
+function telegram:shutdown()
+    if self.anim_in then
+        self.anim_in:push({type = "quit"})
+    end
+    if self.anim_worker then
+        pcall(self.anim_worker.wait, self.anim_worker, 1)
+        self.anim_worker = nil
+    end
+    if not self.worker then
+        return
+    end
+    self.in_channel:push({
+        type = "send",
+        req = json.encode({["@type"] = "close", ["@extra"] = "close"}),
+    })
+    love.timer.sleep(0.1)
+    self.in_channel:push({type = "quit"})
+    pcall(self.worker.wait, self.worker, 1)
+    self.worker = nil
+end
+
+function telegram:reset_account_state()
+    for _, media in pairs({self.voice_notes, self.audios, self.videos, self.animations, self.stickers}) do
+        for _, entry in pairs(media) do
+            if entry.audio_source then pcall(entry.audio_source.stop, entry.audio_source) end
+        end
+    end
+    self.me = nil
+    self.users = {}
+    self.requested_users = {}
+    self.chats = {}
+    self.chats_by_id = {}
+    self.chats_loaded = false
+    self.archive_chats = {}
+    self.archive_chats_by_id = {}
+    self.archive_loaded = false
+    self.archive_load_pending = false
+    self.archive_load_error = nil
+    self.pending_archive_changes = {}
+    self.profile_media = {}
+    self.messages = {}
+    self.history_state = {}
+    self.current_chat_id = nil
+    self.photos = {}
+    self.photo_by_message = {}
+    self.stickers = {}
+    self.sticker_by_message = {}
+    self.sticker_thumbnail_by_file = {}
+    self.sticker_thumbnail_for_file = {}
+    self.sticker_format_by_file = {}
+    self.animations = {}
+    self.animation_by_message = {}
+    self.videos = {}
+    self.video_by_message = {}
+    self.voice_notes = {}
+    self.voice_by_message = {}
+    self.audios = {}
+    self.audio_by_message = {}
+    self.user_photos = {}
+    self.user_photo_by_id = {}
+    self.chat_photos = {}
+    self.chat_photo_by_id = {}
+    self.pending_chat_mute_settings = {}
+    self.chat_search_generation = 0
+    self.chat_search_query = ""
+    self.search_chat_results = {}
+    self.public_search_generation = 0
+    self.public_search_query = ""
+    self.public_search_results = {}
+    self.public_search_user_pending = false
+    self.dialog_search_generation = {}
+    self.dialog_search_query = {}
+    self.dialog_search_results = {}
+end
+
+function telegram:log_out()
+    if not self.worker or not self.ready then
+        self.action_error = "Нет активной авторизованной сессии"
+        return false
+    end
+    self.action_error = ""
+    self.action_status = "Выхожу из аккаунта..."
+    self.logout_pending = true
+    self:send({["@type"] = "logOut"}, "log_out")
+    return true
+end
+
+function telegram:request_qr()
+    local now = love.timer.getTime()
+    if self.qr_request_pending and now - self.qr_requested_at < 10 then
+        return false
+    end
+    self.qr_request_pending = true
+    self.qr_requested_at = love.timer.getTime()
+    self:send({
+        ["@type"] = "requestQrCodeAuthentication",
+        other_user_ids = {},
+    }, "qr")
+    return true
+end
+
+function telegram:update(dt)
+    self:poll()
+    self:poll_media_decoder()
+    for _, entry in pairs(self.voice_notes) do
+        if entry.playing and entry.audio_source then
+            local ok, is_playing = pcall(entry.audio_source.isPlaying, entry.audio_source)
+            if ok and not is_playing then
+                entry.playing = false
+                entry.autoplay = false
+            end
+        end
+        for _, entry in pairs(self.audios) do
+            if entry.playing and entry.audio_source then
+                local ok, is_playing = pcall(entry.audio_source.isPlaying, entry.audio_source)
+                if ok and not is_playing then
+                    entry.playing = false
+                    entry.autoplay = false
+                end
+            end
+        end
+    end
+    for _, entry in pairs(self.videos) do
+        if entry.playing and entry.audio_source then
+            local ok, is_playing = pcall(entry.audio_source.isPlaying, entry.audio_source)
+            if ok and not is_playing then
+                entry.playing = false
+                entry.autoplay = false
+            end
+        end
+    end
+    if self.auth_state == "authorizationStateWaitPhoneNumber" then
+        if self.qr_request_pending and love.timer.getTime() - self.qr_requested_at >= 10 then
+            self.qr_request_pending = false
+        end
+        if not self.qr_request_pending and love.timer.getTime() - self.qr_requested_at >= 3 then
+            self:request_qr()
+        end
+    end
+end
+
+function telegram:poll()
+    for _ = 1, 200 do
+        local raw = self.out_channel:pop()
+        if not raw then
+            break
+        end
+        local ok, object = pcall(json.decode, raw)
+        if ok and type(object) == "table" then
+            self:handle(object)
+        end
+    end
+end
+
+function telegram:handle(object)
+    local kind = object["@type"]
+
+    if kind == "updateAuthorizationState" then
+        self:handle_authorization(object.authorization_state or {})
+    elseif kind == "updateNewChat" then
+        self:handle_new_chat(object.chat)
+    elseif kind == "updateChatPhoto" then
+        local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
+        if chat then
+            chat.photo = object.photo
+            self.chat_photo_by_id[object.chat_id] = nil
+            self:ensure_chat_photo(object.chat_id)
+        end
+    elseif kind == "updateChatChatList" then
+        local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
+        if chat then
+            chat.chat_list = object.chat_list
+            self:handle_new_chat(chat, object.chat_list)
+            self.pending_archive_changes[object.chat_id] = nil
+            self.action_status = "Список чатов обновлён"
+        end
+    elseif kind == "updateChatNotificationSettings" then
+        local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
+        if chat then chat.notification_settings = object.notification_settings end
+        self.pending_chat_mute_settings[object.chat_id] = nil
+    elseif kind == "updateUserStatus" then
+        local user = self.users[object.user_id]
+        if user then user.status = object.status end
+    elseif kind == "updateChatLastMessage" then
+        self:handle_chat_last_message(object)
+    elseif kind == "updateChatTitle" then
+        local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
+        if chat then
+            chat.title = object.title
+            self:rebuild_chats()
+        end
+    elseif kind == "updateChatReadInbox" then
+        local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
+        if chat then
+            chat.unread_count = object.unread_count or 0
+        end
+    elseif kind == "updateNewMessage" then
+        self:handle_new_message(object.message)
+    elseif kind == "updateMessageSendSucceeded" then
+        self:handle_send_succeeded(object)
+    elseif kind == "updateMessageContent" then
+        self:handle_message_content(object)
+    elseif kind == "updateMessageInteractionInfo" then
+        self:handle_message_interaction_info(object)
+    elseif kind == "updateFile" then
+        self:handle_file(object.file)
+    elseif kind == "file" then
+        self:handle_file(object)
+    elseif kind == "updateDeleteMessages" then
+        self:handle_delete_messages(object)
+    elseif kind == "ok" then
+        if object["@extra"] == "loadChats" then
+            self.chats_loaded = true
+        elseif object["@extra"] == "loadArchiveChats" then
+            self.archive_load_pending = false
+            self:request_archive_chat_batch()
+        elseif tostring(object["@extra"] or ""):match("^archive:") then
+            self.action_error = ""
+            self.action_status = "Действие выполнено"
+            local chat_id = tonumber(tostring(object["@extra"]):match("^archive:(%-?%d+):"))
+            if chat_id then self.pending_archive_changes[chat_id] = nil end
+        elseif tostring(object["@extra"] or ""):match("^mute:") then
+            self.action_error = ""
+            self.action_status = "Настройки уведомлений изменены"
+            local chat_id = tostring(object["@extra"]):match("^mute:(%-?%d+):")
+            if chat_id then self.pending_chat_mute_settings[tonumber(chat_id)] = nil end
+        elseif object["@extra"] == "log_out" then
+            self.action_error = ""
+            self.action_status = "Ожидается авторизация..."
+        end
+    elseif kind == "user" then
+        self:handle_user(object)
+    elseif kind == "messages" then
+        local extra = object["@extra"] or ""
+        if extra:match("^profile_media:") then
+            self:handle_profile_media(object)
+        elseif extra:match("^forward:") then
+            self.action_error = ""
+            self.action_status = "Сообщения пересланы"
+        elseif extra:match("^dialog_search:") then
+            self:handle_dialog_search(object)
+        else
+            self:handle_history(object)
+        end
+    elseif kind == "chats" then
+        local extra = tostring(object["@extra"] or "")
+        if extra:match("^public_search:") then
+            self:handle_public_search_chats(object)
+        else
+            self:handle_search_chats(object)
+        end
+    elseif kind == "chat" then
+        local extra = tostring(object["@extra"] or "")
+        if extra:match("^public_search_detail:") then
+            self:handle_public_search_detail(object)
+        elseif extra:match("^public_user_search:") then
+            self:handle_public_user_search(object)
+        elseif extra:match("^chat_search_detail:") then
+            self:handle_search_chat_detail(object)
+        else
+            self:handle_new_chat(object)
+        end
+    elseif kind == "message" then
+        if tostring(object["@extra"] or ""):match("^edit:") then
+            self.action_error = ""
+            self.action_status = "Сообщение изменено"
+        end
+        self:handle_new_message(object)
+    elseif kind == "proxy" and object["@extra"] == "proxy" then
+        print("TDLib accepted the configured Telegram proxy")
+    elseif kind == "error" then
+        local message = tostring(object.message or "TDLib error")
+        local extra = tostring(object["@extra"] or "")
+        if extra == "proxy" then
+            print("TDLib rejected the configured Telegram proxy: " .. message)
+        end
+        local history_chat_id = tonumber(extra:match("^history_more:(%-?%d+):"))
+            or tonumber(extra:match("^history:(%-?%d+)$"))
+        if history_chat_id then
+            local state = self.history_state[history_chat_id]
+            if state then
+                state.loading = false
+                state.error = message
+            end
+        elseif extra:match("^profile_media:") then
+            local chat_id, category = extra:match("^profile_media:(%-?%d+):([%w_]+)$")
+            chat_id = tonumber(chat_id)
+            self.profile_media[category] = self.profile_media[category] or {}
+            self.profile_media[category][chat_id] = {loading = false, messages = {}, error = message}
+        elseif extra:match("^chat_search:") then
+            local generation = tonumber(extra:match("^chat_search:(%d+)$"))
+            if generation == self.chat_search_generation then
+                self.chat_search_error = message
+                self.search_chat_results = {}
+            end
+        elseif extra:match("^public_search:") or extra:match("^public_user_search:") then
+            local generation = tonumber(extra:match(":(%d+)$"))
+            if generation == self.public_search_generation then
+                self.public_search_error = message
+                self.public_search_user_pending = false
+                if extra:match("^public_search:") then
+                    self.public_search_results = {}
+                end
+            end
+        elseif extra:match("^dialog_search:") then
+            local chat_id = tonumber(extra:match("^dialog_search:(%-?%d+):"))
+            if chat_id and self.dialog_search_generation[chat_id] then
+                self.dialog_search_results[chat_id] = {}
+                self.dialog_search_error = message
+            end
+        elseif extra:match("^audio:") then
+            local file_id = tonumber(extra:match("^audio:(%d+)$"))
+            local entry = file_id and self.audios[file_id]
+            if entry then
+                entry.status = "error"
+                entry.audio_error = message
+                entry.autoplay = false
+            end
+        elseif extra:match("^edit:") then
+            self.action_error = message
+            self.action_status = ""
+        elseif extra == "log_out" then
+            self.logout_pending = false
+            self.action_error = message
+            self.action_status = ""
+        elseif extra == "qr" then
+            self.qr_request_pending = false
+            self.action_error = message
+        elseif extra:match("^archive:") then
+            self.action_error = message
+            self.action_status = ""
+            local chat_id = tonumber(extra:match("^archive:(%-?%d+):"))
+            local change = chat_id and self.pending_archive_changes[chat_id]
+            if change then
+                local chat = change.chat
+                chat.chat_list = change.previous_list
+                self.pending_archive_changes[chat_id] = nil
+                self:handle_new_chat(chat, change.previous_list)
+            end
+        elseif extra:match("^forward:") or extra:match("^mute:") then
+            self.action_error = message
+            self.action_status = ""
+            local chat_id = tonumber(extra:match("^mute:(%-?%d+):"))
+            if chat_id then
+                local chat = self.chats_by_id[chat_id] or self.archive_chats_by_id[chat_id]
+                local previous = self.pending_chat_mute_settings[chat_id]
+                if chat and previous ~= nil then
+                    chat.notification_settings = previous ~= false and previous or nil
+                end
+                self.pending_chat_mute_settings[chat_id] = nil
+            end
+        end
+        if object.code == 401 then
+            self.auth_error = message
+        elseif object["@extra"] == "loadChats" then
+            self.chats_loaded = true
+            if object.code ~= 404 then
+                self.auth_error = message
+            end
+        elseif object["@extra"] == "loadArchiveChats" then
+            self.archive_load_pending = false
+            self.archive_loaded = true
+            if object.code == 404 then
+                self.archive_load_error = nil
+            else
+                self.archive_load_error = message
+                self.auth_error = message
+            end
+        elseif object["@extra"] == "me" or object["@extra"] == "qr"
+            or object["@extra"] == "tdlib_params" or object["@extra"] == "password"
+            or object["@extra"] == "proxy" then
+            self.auth_error = message
+        end
+    elseif kind == "love_error" then
+        self.auth_error = tostring(object.message or "TDLib worker error")
+    end
+end
+
+function telegram:add_proxy(proxy)
+    local kind = proxy.type
+    local proxy_type
+    if kind == "socks5" then
+        proxy_type = {
+            ["@type"] = "proxyTypeSocks5",
+            username = proxy.username or "",
+            password = proxy.password or "",
+        }
+    elseif kind == "http" then
+        proxy_type = {
+            ["@type"] = "proxyTypeHttp",
+            username = proxy.username or "",
+            password = proxy.password or "",
+            http_only = false,
+        }
+    elseif kind == "mtproto" then
+        proxy_type = {
+            ["@type"] = "proxyTypeMtproto",
+            secret = proxy.secret or "",
+        }
+    elseif kind == "web" then
+        proxy_type = {
+            ["@type"] = "proxyTypeWeb",
+            path = proxy.path or "",
+            secret = proxy.secret or "",
+        }
+    else
+        self.auth_error = "Неизвестный тип прокси: " .. tostring(kind)
+        return
+    end
+
+    print(string.format("Adding Telegram proxy: %s %s:%d",
+        kind, proxy.server, proxy.port))
+    self:send({
+        ["@type"] = "addProxy",
+        server = proxy.server,
+        port = proxy.port,
+        type = proxy_type,
+        enable = true,
+    }, "proxy")
+end
+
+function telegram:handle_authorization(state)
+    local kind = state["@type"]
+    local previous_state = self.auth_state
+    self.auth_state = kind
+    if kind ~= previous_state then
+        print("TDLib authorization state: " .. tostring(kind))
+    end
+
+    if kind == "authorizationStateWaitTdlibParameters" then
+        local options = self.options or {}
+        if options.proxy and not self.proxy_added then
+            self.proxy_added = true
+            self:add_proxy(options.proxy)
+        end
+        self:send({
+            ["@type"] = "setTdlibParameters",
+            parameters = {
+                database_directory = options.db,
+                files_directory = options.files,
+                use_message_database = true,
+                use_secret_chats = false,
+                api_id = options.api_id,
+                api_hash = options.api_hash,
+                system_language_code = "en",
+                device_model = "Anbernic RG35XX SP",
+                system_version = "muOS",
+                application_version = "0.1",
+                enable_storage_optimizer = true,
+                ignore_file_names = false,
+            },
+        }, "tdlib_params")
+    elseif kind == "authorizationStateWaitEncryptionKey" then
+        local options = self.options or {}
+        self:send({
+            ["@type"] = "checkDatabaseEncryptionKey",
+            encryption_key = options.database_key or "",
+        }, "database_key")
+    elseif kind == "authorizationStateWaitPhoneNumber" then
+        if self.logout_pending then self:reset_account_state() end
+        self.logout_pending = false
+        self.ready = false
+        self.qr_link = ""
+        if previous_state ~= kind then
+            self.qr_request_pending = false
+        end
+        self.action_status = ""
+        self.action_error = ""
+        self:request_qr()
+    elseif kind == "authorizationStateWaitOtherDeviceConfirmation" then
+        self.qr_request_pending = false
+        self.qr_link = state.link or ""
+        self.auth_error = ""
+    elseif kind == "authorizationStateWaitPassword" then
+        self.password_hint = state.password_hint or ""
+        self.auth_error = ""
+    elseif kind == "authorizationStateReady" then
+        self.ready = true
+        self.qr_link = ""
+        self.auth_error = ""
+        self.action_status = ""
+        self.action_error = ""
+        self:send({["@type"] = "getMe"}, "me")
+        self:send({
+            ["@type"] = "loadChats",
+            chat_list = {["@type"] = "chatListMain"},
+            limit = 100,
+        }, "loadChats")
+        if self.on_ready then
+            self.on_ready()
+        end
+    elseif kind == "authorizationStateClosed" then
+        self.closed = true
+        self.ready = false
+    else
+        self.ready = false
+    end
+end
+
+return telegram

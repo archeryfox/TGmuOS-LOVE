@@ -1,0 +1,83 @@
+local ffi = require("ffi")
+local json = require("dkjson")
+
+ffi.cdef[[
+void* td_json_client_create();
+void td_json_client_send(void* client, const char* request);
+const char* td_json_client_receive(void* client, double timeout);
+const char* td_json_client_execute(void* client, const char* request);
+void td_json_client_destroy(void* client);
+void td_set_log_file_path(const char* file_path);
+void td_set_log_max_file_size(long long max_log_file_size);
+void td_set_log_verbosity_level(int verbosity_level);
+]]
+
+local in_channel = love.thread.getChannel("td_in")
+local out_channel = love.thread.getChannel("td_out")
+
+local function push_error(message)
+    out_channel:push(json.encode({
+        ["@type"] = "love_error",
+        message = tostring(message),
+    }))
+end
+
+local init = in_channel:demand()
+if type(init) ~= "table" or not init.lib then
+    push_error("TDLib worker did not receive a library path")
+    return
+end
+
+local ok, lib = pcall(ffi.load, init.lib)
+if not ok then
+    push_error("Failed to load TDLib: " .. tostring(lib))
+    return
+end
+
+if init.log and lib.td_set_log_file_path then
+    pcall(lib.td_set_log_file_path, init.log)
+end
+if lib.td_set_log_max_file_size then
+    pcall(lib.td_set_log_max_file_size, 10 * 1024 * 1024)
+end
+if lib.td_set_log_verbosity_level then
+    pcall(lib.td_set_log_verbosity_level, 1)
+end
+
+local client = lib.td_json_client_create()
+if client == nil or client == ffi.NULL then
+    push_error("td_json_client_create returned NULL")
+    return
+end
+
+local running = true
+while running do
+    local command = in_channel:pop()
+    while command do
+        if type(command) == "table" then
+            if command.type == "send" then
+                lib.td_json_client_send(client, command.req)
+            elseif command.type == "execute" then
+                local response = lib.td_json_client_execute(client, command.req)
+                if response ~= nil and response ~= ffi.NULL then
+                    out_channel:push(ffi.string(response))
+                end
+            elseif command.type == "quit" then
+                running = false
+                break
+            end
+        end
+        command = in_channel:pop()
+    end
+
+    if not running then
+        break
+    end
+
+    local response = lib.td_json_client_receive(client, 0.05)
+    if response ~= nil and response ~= ffi.NULL then
+        out_channel:push(ffi.string(response))
+    end
+end
+
+pcall(lib.td_json_client_destroy, client)

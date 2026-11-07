@@ -1,0 +1,20 @@
+# Build artifacts
+dist/
+*.zip
+build/
+build-host/
+
+# Local editor / file manager metadata
+.directory
+.DS_Store
+
+# Private configs and session data (never commit)
+telegram.conf
+subscription.conf
+subscription-sources.txt
+mtproto.conf
+manual-sing-box.json
+proxy.conf
+accounts.json
+data/
+*.log

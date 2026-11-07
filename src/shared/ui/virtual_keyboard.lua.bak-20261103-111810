@@ -1,0 +1,149 @@
+-- src/shared/ui/virtual_keyboard.lua — on-screen QWERTY keyboard EN/RU
+local ui = require("src.shared.ui.ui_kit")
+
+local keyboard = {}
+
+local LAYOUT_EN = {
+    {"q","w","e","r","t","y","u","i","o","p"},
+    {"a","s","d","f","g","h","j","k","l"},
+    {"z","x","c","v","b","n","m",",",".","?"}
+}
+
+local LAYOUT_RU = {
+    {"й","ц","у","к","е","н","г","ш","щ","з","х"},
+    {"ф","ы","в","а","п","р","о","л","д","ж","э"},
+    {"я","ч","с","м","и","т","ь","б","ю",".",","}
+}
+
+function keyboard.new(fonts)
+    local self = {}
+    self.fonts = fonts
+    self.visible = false
+    self.layout = LAYOUT_EN
+    self.shift = false
+    self.caps = false
+    self.lang = "en" -- "en" or "ru"
+    self.key_w = 48
+    self.key_h = 36
+    self.key_gap = 4
+    self.rows = 3
+    return setmetatable(self, {__index = keyboard})
+end
+
+function keyboard:toggle()
+    self.visible = not self.visible
+end
+
+function keyboard:switch_lang()
+    self.lang = (self.lang == "en") and "ru" or "en"
+    self.layout = (self.lang == "en") and LAYOUT_EN or LAYOUT_RU
+end
+
+function keyboard:press(key)
+    if key == "space" then return " " end
+    if key == "enter" then return "\n" end
+    if key == "backspace" then return "\b" end
+    if key == "shift" then self.shift = not self.shift; return nil end
+    if key == "lang" then self:switch_lang(); return nil end
+    if key == "caps" then self.caps = not self.caps; return nil end
+    if key == "hide" then self.visible = false; return nil end
+
+    local ch = key
+    if self.shift or self.caps then
+        ch = string.upper(ch)
+    end
+    if self.shift then self.shift = false end
+    return ch
+end
+
+function keyboard:draw()
+    if not self.visible then return end
+
+    local f = self.fonts.normal or self.fonts
+    local w = ui.width()
+    local h = ui.height()
+    local colors = ui.colors
+
+    -- Calculate keyboard dimensions
+    local max_keys = 11 -- RU top row
+    local kb_w = max_keys * (self.key_w + self.key_gap) - self.key_gap + 32
+    local kb_h = self.rows * (self.key_h + self.key_gap) - self.key_gap + 80 -- + space row + control row
+    local x = math.floor((w - kb_w) / 2)
+    local y = h - kb_h - 10
+
+    -- Background
+    ui.rect(x - 8, y - 8, kb_w + 16, kb_h + 16, colors.panel, 8)
+    ui.outline(x - 8, y - 8, kb_w + 16, kb_h + 16, colors.accent, 8)
+
+    -- Language indicator
+    local lang_text = (self.lang == "en") and "EN" or "RU"
+    ui.text(lang_text, x + kb_w - 40, y - 24, self.fonts.small, colors.accent)
+
+    -- Draw keys
+    local key_y = y
+    for row_idx, row in ipairs(self.layout) do
+        local row_w = #row * (self.key_w + self.key_gap) - self.key_gap
+        local key_x = x + math.floor((kb_w - row_w) / 2)
+        for _, key in ipairs(row) do
+            local bg = colors.bg
+            local txt = key
+            if self.shift or self.caps then txt = string.upper(key) end
+            ui.rect(key_x, key_y, self.key_w, self.key_h, bg, 4)
+            ui.outline(key_x, key_y, self.key_w, self.key_h, colors.muted, 4)
+            ui.text(txt, key_x + math.floor((self.key_w - f:getWidth(txt)) / 2), key_y + 8, f, colors.text)
+            key_x = key_x + self.key_w + self.key_gap
+        end
+        key_y = key_y + self.key_h + self.key_gap
+    end
+
+    -- Space row
+    local space_w = 300
+    local key_x = x + math.floor((kb_w - space_w) / 2)
+    ui.rect(key_x, key_y, space_w, self.key_h, colors.accent, 4)
+    ui.text("Space", key_x + math.floor((space_w - f:getWidth("Space")) / 2), key_y + 8, f, colors.bg)
+    key_x = key_x + space_w + self.key_gap
+
+    -- Control keys
+    local ctrl_keys = {{"Shift", "shift"}, {"Lang", "lang"}, {"Caps", "caps"}, {"⌫", "backspace"}, {"⏎", "enter"}, {"Hide", "hide"}}
+    for _, ctrl in ipairs(ctrl_keys) do
+        local txt, k = ctrl[1], ctrl[2]
+        local cw = f:getWidth(txt) + 16
+        local cbg = (k == "shift" and self.shift) or (k == "caps" and self.caps) and colors.accent or colors.bg
+        ui.rect(key_x, key_y, cw, self.key_h, cbg, 4)
+        ui.text(txt, key_x + 8, key_y + 8, f, (k == "shift" and self.shift) or (k == "caps" and self.caps) and colors.bg or colors.text)
+        key_x = key_x + cw + self.key_gap
+    end
+end
+
+function keyboard:keypressed(key)
+    if not self.visible then return false end
+
+    if key == "escape" then
+        self.visible = false
+        return true
+    end
+
+    -- Map gamepad/keys to keyboard
+    local map = {
+        dpup = nil, dpdown = nil, dpleft = nil, dpright = nil,
+        a = "select", b = "backspace", x = nil, y = "lang",
+        start = "enter", back = "space",
+    }
+    local k = map[key] or key
+    if k == "select" then
+        -- Not used, would need cursor navigation
+    elseif k then
+        local ch = self:press(k)
+        if ch then
+            -- Return the character to be inserted
+            return ch
+        end
+    end
+    return false
+end
+
+function keyboard:textinput(text)
+    -- Not used for virtual keyboard
+end
+
+return keyboard

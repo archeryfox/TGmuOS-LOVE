@@ -1,0 +1,103 @@
+-- src/features/auth/model/auth_model.lua — состояние авторизации
+local auth_model = {}
+
+local STATE_TEXT = {
+    starting = "Запуск TDLib...",
+    authorizationStateWaitTdlibParameters = "Инициализация параметров...",
+    authorizationStateWaitPhoneNumber = "Запрос QR-кода...",
+    authorizationStateWaitOtherDeviceConfirmation = "Ожидание сканирования QR-кода",
+    authorizationStateWaitPassword = "Введите пароль двухфакторной аутентификации",
+    authorizationStateReady = "Готово",
+    authorizationStateClosed = "Соединение закрыто",
+}
+
+local CONNECTION_TEXT = {
+    connectionStateWaitingForNetwork = "ожидание сети",
+    connectionStateConnectingToProxy = "подключение к прокси",
+    connectionStateConnecting = "подключение к Telegram",
+    connectionStateUpdating = "получение данных",
+    connectionStateReady = "соединение установлено",
+}
+
+local PROXY_TEXT = {
+    mtproto = "MTProxy",
+    socks5 = "SOCKS5",
+    http = "HTTP-прокси",
+}
+
+local DC_TEXT = {
+    test = "Тестовый DC 2 · 149.154.167.40:443",
+    production = "Рабочий DC 2 · 149.154.167.50:443",
+}
+
+function auth_model.new(tg)
+    local self = {}
+    self.tg = tg
+    self.qr_link = nil
+    self.qr_image = nil
+    self.qr_size = 0
+    self.password_mode = false
+    self.password = ""
+    return setmetatable(self, {__index = auth_model})
+end
+
+function auth_model:get_status_text()
+    return STATE_TEXT[self.tg.auth_state] or self.tg.auth_state or "Подключение..."
+end
+
+function auth_model:get_route_text()
+    local options = self.tg.options or {}
+    local proxy = options.proxy
+    if not proxy then
+        return "Маршрут: напрямую"
+    end
+
+    local kind = PROXY_TEXT[proxy.type] or proxy.type or "прокси"
+    return string.format("Маршрут: %s %s:%s",
+        kind, proxy.server or "?", tostring(proxy.port or "?"))
+end
+
+function auth_model:get_dc_text()
+    local environment = self.tg.options and self.tg.options.use_test_dc and "test" or "production"
+    return DC_TEXT[environment]
+end
+
+function auth_model:get_connection_text()
+    if self.tg.proxy_probe_state == "pending" then
+        return "Прокси: проверка соединения..."
+    elseif self.tg.proxy_probe_state == "ready" then
+        return string.format("Прокси: работает, %.2f с",
+            self.tg.proxy_ping_seconds or 0)
+    elseif self.tg.proxy_probe_state == "failed" then
+        local message = self.tg.proxy_probe_error or "неизвестная ошибка"
+        if #message > 42 then
+            message = message:sub(1, 39) .. "..."
+        end
+        return "Прокси: ошибка — " .. message
+    end
+
+    local state = self.tg.connection_state
+    return "Сеть: " .. (CONNECTION_TEXT[state] or "ожидание ответа TDLib")
+end
+
+function auth_model:has_error()
+    return self.tg.auth_error and self.tg.auth_error ~= ""
+end
+
+function auth_model:get_error()
+    return self.tg.auth_error or ""
+end
+
+function auth_model:is_qr_ready()
+    return self.qr_image ~= nil
+end
+
+function auth_model:is_password_mode()
+    return self.tg.auth_state == "authorizationStateWaitPassword"
+end
+
+function auth_model:get_password_hint()
+    return self.tg.password_hint or ""
+end
+
+return auth_model
