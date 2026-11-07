@@ -81,5 +81,5 @@ while true do
     if type(command) == "string" then
         handle(command)
     end
-    love.timer.sleep(0.05)
+    local t = os.clock(); while os.clock() - t < 0.05 do end
 end
