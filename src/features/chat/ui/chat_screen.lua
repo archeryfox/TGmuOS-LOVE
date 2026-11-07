@@ -727,8 +727,11 @@ function messenger_screen:draw_fullscreen_media(w, h)
             local draw_h = image:getHeight() * scale
             local pan_x = self.fullscreen_pan_x or 0
             local pan_y = self.fullscreen_pan_y or 0
+            local draw_x = (w - draw_w) / 2 + pan_x
+            local draw_y = (h - draw_h) / 2 + pan_y - panel_h / 2
+            draw_y = math.max(12, math.min(draw_y, available_h - draw_h + 12))
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(image, (w - draw_w) / 2 + pan_x, ((available_h - draw_h) / 2) + pan_y, 0, scale, scale)
+            love.graphics.draw(image, draw_x, draw_y, 0, scale, scale)
         end
     else
         love.graphics.setColor(1, 1, 1, 1)
