@@ -125,3 +125,31 @@ environment=production
 
 Нажмите Ctrl+C для остановки | интервал: 2s
 ```
+
+## Running (PC / development)
+
+Use `run.sh` to launch the client with Telegram credentials supplied as
+runtime environment variables (preferred) or from a config file:
+
+```sh
+# Environment variables
+TG_API_ID=12345 TG_API_HASH=abcdef ./run.sh
+
+# Or from a config file
+TG_CONFIG=/path/to/telegram.conf ./run.sh
+
+# Or place credentials in ~/.config/love_tg_native/telegram.conf:
+#   api_id=12345
+#   api_hash=abcdef
+./run.sh
+```
+
+Supported environment variables: `TG_API_ID`, `TG_API_HASH`, `TG_CONFIG`,
+`TG_ENVIRONMENT` (production/test), `TG_PROXY_TYPE`, `TG_PROXY_SERVER`,
+`TG_PROXY_PORT`, `TG_PROXY_SECRET`, `TG_PROXY_USER`, `TG_PROXY_PASSWORD`,
+`LOVE_BIN`. Proxy settings can also be stored in the config file.
+
+On muOS the launcher `mux_launch.sh` auto-selects the first available config
+file from `/root/.config/Telegram/telegram.conf`,
+`/root/.config/tgmuos_love/telegram.conf` or
+`/root/.config/love_tg_native/telegram.conf`.
