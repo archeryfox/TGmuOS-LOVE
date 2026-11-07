@@ -36,6 +36,89 @@ local helpers = require("src.features.chat.ui.chat_screen_helpers")
 local wrapped_lines = helpers.wrapped_lines
 local draw_circle_image = helpers.draw_circle_image
 local draw_text_lines = helpers.draw_text_lines
+
+local function render_markdown(text, x, y, width, font, color)
+  if not text or text == "" then return end
+  -- Parse into segments: {text, style} where style in {plain,bold,italic,code}
+  local segments = {}
+  local i = 1
+  local n = #text
+  while i <= n do
+    -- code span
+    if text:sub(i, i) == "`" then
+      local j = text:find("`", i + 1, true)
+      if j then
+        segments[#segments+1] = {text:sub(i+1, j-1), "code"}
+        i = j + 1
+      else
+        segments[#segments+1] = {text:sub(i, i), "plain"}
+        i = i + 1
+      end
+    -- bold
+    elseif text:sub(i, i+1) == "**" then
+      local j = text:find("**", i + 2, true)
+      if j then
+        segments[#segments+1] = {text:sub(i+2, j-1), "bold"}
+        i = j + 2
+      else
+        segments[#segments+1] = {text:sub(i, i), "plain"}
+        i = i + 1
+      end
+    -- italic
+    elseif text:sub(i, i) == "*" then
+      local j = text:find("*", i + 1, true)
+      if j then
+        segments[#segments+1] = {text:sub(i+1, j-1), "italic"}
+        i = j + 1
+      else
+        segments[#segments+1] = {text:sub(i, i), "plain"}
+        i = i + 1
+      end
+    else
+      -- collect plain until next marker
+      local nextpos = n + 1
+      for _, m in ipairs({"`", "**", "*"}) do
+        local p = text:find(m, i, true)
+        if p and p < nextpos then nextpos = p end
+      end
+      segments[#segments+1] = {text:sub(i, nextpos - 1), "plain"}
+      i = nextpos
+    end
+  end
+  -- Render with wrapping
+  local line_h = font:getHeight()
+  local cur_x = x
+  local cur_y = y
+  for _, seg in ipairs(segments) do
+    local style = seg[2]
+    local segtext = seg[1]
+    -- split by words for wrapping
+    for word in segtext:gmatch("%S+") do
+      local w = font:getWidth(word .. " ")
+      if cur_x + w > x + width and cur_x > x then
+        cur_x = x
+        cur_y = cur_y + line_h
+      end
+      if style == "bold" then
+        love.graphics.setColor(1, 1, 1, 1)
+      elseif style == "italic" then
+        love.graphics.setColor(0.85, 0.85, 0.95, 1)
+      elseif style == "code" then
+        love.graphics.setColor(0.9, 0.9, 0.6, 1)
+      else
+        love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+      end
+      local seg_color = (style == "bold" and {1,1,1,1}) or (style == "italic" and {0.85,0.85,0.95,1}) or (style == "code" and {0.9,0.9,0.6,1}) or color
+      ui.text(word, cur_x, cur_y, font, seg_color)
+      cur_x = cur_x + font:getWidth(word .. " ")
+    end
+    -- handle spaces between segments: add a space
+    if cur_x > x then
+      cur_x = cur_x + font:getWidth(" ")
+    end
+  end
+  love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+end
 local conversation_items = helpers.conversation_items
 
 function messenger_screen.new(fonts, tg)
@@ -1396,8 +1479,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
         draw_text_lines(wrapped_lines(f.normal, display_text, math.max(32, wrap_width - 28)),
             x + padding + 26, text_y, f.normal, colors.text)
     else
-        local lines = wrapped_lines(f.normal, text, wrap_width)
-        draw_text_lines(lines, x + padding, text_y, f.normal, colors.text)
+        render_markdown(text, x + padding, text_y, wrap_width, f.normal, colors.text)
         local tags = helpers.hashtag_tokens(text)
         for _, tag in ipairs(tags) do
             for line_index, line in ipairs(lines) do
