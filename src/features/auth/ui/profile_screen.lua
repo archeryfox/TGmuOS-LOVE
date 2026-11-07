@@ -169,7 +169,7 @@ function profile_screen:draw_media(f, colors, w, h)
         if self.category == "photos" then
             local image = self.tg:photo_image(message)
             if image then
-                local size = 36
+                local size = 12
                 local scale = math.min(size / image:getWidth(), size / image:getHeight())
                 love.graphics.draw(image, 20, row_y + 3, 0, scale, scale)
             end
@@ -180,7 +180,7 @@ function profile_screen:draw_media(f, colors, w, h)
         ui.rect(68, row_y + row_h - 1, w - 100, 1, colors.panel_alt)
     end
     love.graphics.setScissor()
-    ui.text("Колёсико — список медиа", 20, h - 30, f.tiny, colors.muted)
+    ui.text("←/→ — категории   ↑/↓ — прокрутка   Колёсико — список", 20, h - 30, f.tiny, colors.muted)
 end
 
 function profile_screen:draw()
@@ -241,6 +241,15 @@ function profile_screen:keypressed(key)
         self.category = categories[idx].key
         self.media_scroll = 0
         if self.chat_id then self.tg:load_profile_media(self.chat_id, self.category) end
+    elseif key == "up" then
+        self.media_scroll = math.max(0, self.media_scroll - 1)
+    elseif key == "down" then
+        local data = self.chat_id and self.tg.profile_media[self.category]
+            and self.tg.profile_media[self.category][self.chat_id]
+        local count = data and #(data.messages or {}) or 0
+        local list_h = ui.height() - 254
+        local visible = math.max(1, math.floor((list_h - 8) / 44))
+        self.media_scroll = math.min(math.max(0, count - visible), self.media_scroll + 1)
     end
 end
 
