@@ -907,6 +907,7 @@ function messenger_screen:chat_context_menu_items(chat)
     local items = {
         {label = muted and "Размутить" or "Замутить навсегда", action = muted and "unmute_chat" or "mute_chat"},
         {label = is_archived and "Вернуть из архива" or "Отправить в архив", action = is_archived and "unarchive_chat" or "archive_chat"},
+        {label = "Мой профиль", action = "open_my_profile"},
     }
     local chat_type = chat and chat.type and chat.type["@type"]
     if chat_type ~= "chatTypePrivate" and chat_type ~= "chatTypeSecret" then

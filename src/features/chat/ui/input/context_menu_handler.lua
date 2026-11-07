@@ -63,6 +63,10 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         if ms.tg.ensure_photo_hires then
             ms.tg:ensure_photo_hires(cm.message)
         end
+    elseif item.action == "open_my_profile" then
+        if ms.wants_profile_self ~= nil then
+            ms.wants_profile_self = true
+        end
     elseif item.action == "open_sticker_pack" then
         if ms.tg.open_sticker_set then
             ms.tg:open_sticker_set(cm.message)

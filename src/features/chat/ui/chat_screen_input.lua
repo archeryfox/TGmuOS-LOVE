@@ -437,7 +437,7 @@ self.fullscreen_zoom = 1
             if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             return
         end
-        if key == "p" and not self.tg.current_chat_id then
+        if (key == "p" or key == "m") and not self.tg.current_chat_id then
             self.wants_profile_self = true
             return
         end
