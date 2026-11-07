@@ -52,6 +52,8 @@ function profile_screen:enter()
         local me = self.tg.me
         if me then
             self.user_id = me.id
+            self.tg:ensure_user(me.id)
+            self.tg:ensure_user_photo(me.id)
             self.name = self.tg:user_name(me.id)
             self.username = me.username or ""
             self.phone = me.phone_number or ""

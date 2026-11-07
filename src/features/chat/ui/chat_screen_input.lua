@@ -437,6 +437,10 @@ self.fullscreen_zoom = 1
             if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             return
         end
+        if key == "p" and not self.tg.current_chat_id then
+            self.wants_profile_self = true
+            return
+        end
         if self.sticker_link_mode then
             if key == "return" or key == "kpenter" or key == "a" then
                 local link = self.sticker_link_input

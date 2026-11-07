@@ -15,7 +15,69 @@ function input_handler.keypressed(ms, key)
         if ms:handle_virtual_keyboard(key) then return end
     end
     if ms.tg.sticker_set_viewer then
-        if key == "escape" then ms.tg.sticker_set_viewer = nil end
+        local pack = ms.tg.sticker_set_viewer
+        if key == "escape" then
+            ms.tg.sticker_set_viewer = nil
+            return
+        end
+        if pack and not pack.loading and not pack.error and pack.stickers and #pack.stickers > 0 then
+            local width, height = ui.width(), ui.height()
+            local panel_w = math.min(width - 48, 760)
+            local panel_h = math.min(height - 48, 620)
+            local grid_w = panel_w - 32
+            local columns = math.max(1, math.floor(grid_w / 112))
+            local cell_w = grid_w / columns
+            local cell_h = math.min(116, cell_w)
+            local grid_h = panel_h - 92
+            local rows_per_page = math.max(1, math.floor(grid_h / cell_h))
+            local row_count = math.ceil(#pack.stickers / columns)
+            local max_scroll = math.max(0, row_count - rows_per_page)
+            if not pack.selected_index then pack.selected_index = 1 end
+            if key == "up" or key == "kp8" then
+                pack.selected_index = pack.selected_index - columns
+                if pack.selected_index < 1 then pack.selected_index = 1 end
+                local row = math.ceil(pack.selected_index / columns)
+                pack.scroll = math.max(0, math.min(max_scroll, row - rows_per_page))
+                return
+            elseif key == "down" or key == "kp2" then
+                pack.selected_index = pack.selected_index + columns
+                if pack.selected_index > #pack.stickers then pack.selected_index = #pack.stickers end
+                local row = math.ceil(pack.selected_index / columns)
+                pack.scroll = math.max(0, math.min(max_scroll, row - rows_per_page))
+                return
+            elseif key == "left" then
+                pack.selected_index = pack.selected_index - 1
+                if pack.selected_index < 1 then pack.selected_index = #pack.stickers end
+                local row = math.ceil(pack.selected_index / columns)
+                pack.scroll = math.max(0, math.min(max_scroll, row - rows_per_page))
+                return
+            elseif key == "right" then
+                pack.selected_index = pack.selected_index + 1
+                if pack.selected_index > #pack.stickers then pack.selected_index = 1 end
+                local row = math.ceil(pack.selected_index / columns)
+                pack.scroll = math.max(0, math.min(max_scroll, row - rows_per_page))
+                return
+            elseif key == "pageup" then
+                pack.scroll = math.max(0, (pack.scroll or 0) - rows_per_page)
+                return
+            elseif key == "pagedown" then
+                pack.scroll = math.min(max_scroll, (pack.scroll or 0) + rows_per_page)
+                return
+            elseif key == "return" or key == "kpenter" or key == "a" then
+                local sticker = pack.stickers[pack.selected_index]
+                if sticker then
+                    local file = sticker.sticker
+                    local entry = file and ms.tg.stickers and ms.tg.stickers[file.id]
+                    local img = entry and (entry.image or (entry.frames and entry.frames[1]))
+                    if img then
+                        ms.sticker_fullscreen_image = img
+                        ms.sticker_fullscreen_sticker = sticker
+                    end
+                end
+                return
+            end
+        end
+        if key == "escape" or key == "b" then ms.tg.sticker_set_viewer = nil end
         return
     end
     if ms.context_menu then

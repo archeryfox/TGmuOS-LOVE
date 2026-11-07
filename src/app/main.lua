@@ -169,6 +169,15 @@ local function show_profile(chat_id, user_id)
     transition_to(profile, true)
 end
 
+local function show_my_profile()
+    if not screens then return end
+    local profile = screens.profile
+    profile.chat_id = nil
+    profile.user_id = tg and tg.me and tg.me.id
+    profile.is_me = true
+    transition_to(profile, true)
+end
+
 local function parse_conf(path)
     local handle = io.open(path, "r")
     if not handle then return nil end
@@ -299,6 +308,9 @@ function love.update(dt)
             local chat_id = ms.wants_profile_chat_id
             ms.wants_profile_chat_id = nil
             show_profile(chat_id)
+        elseif ms.wants_profile_self then
+            ms.wants_profile_self = nil
+            show_my_profile()
         end
     end
 
@@ -440,6 +452,9 @@ function love.mousepressed(x, y, button)
             local chat_id = ms.wants_profile_chat_id
             ms.wants_profile_chat_id = nil
             show_profile(chat_id)
+        elseif ms.wants_profile_self then
+            ms.wants_profile_self = nil
+            show_my_profile()
         end
     end
 end

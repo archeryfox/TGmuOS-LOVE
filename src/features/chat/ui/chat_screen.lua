@@ -152,6 +152,7 @@ function messenger_screen.new(fonts, tg)
     self.forward_from_chat_id = nil
     self.wants_settings = false
     self.wants_profile_chat_id = nil
+    self.wants_profile_self = nil
     self.edit_mode = false
     self.edit_message = nil
     self.edit_input = ""
@@ -535,13 +536,21 @@ function messenger_screen:draw_sticker_pack(w, h)
         love.graphics.setScissor(grid_x, grid_y, grid_w, grid_h)
         local first_index = pack.scroll * columns + 1
         local last_index = math.min(#pack.stickers, first_index + rows_per_page * columns - 1)
+        local selected_idx = pack.selected_index or 1
         for index = first_index, last_index do
             local slot = index - first_index
             local column = slot % columns
             local row = math.floor(slot / columns)
             local x = grid_x + column * cell_w
             local y = grid_y + row * cell_h
+            local is_selected = index == selected_idx
             ui.rect(x + 3, y + 3, cell_w - 6, cell_h - 6, colors.panel_alt, 7)
+            if is_selected then
+                love.graphics.setColor(0.2, 0.6, 1, 0.9)
+                love.graphics.rectangle("fill", x + 3, y + 3, cell_w - 6, cell_h - 6, 7)
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.rectangle("line", x + 3, y + 3, cell_w - 6, cell_h - 6, 7, 3)
+            end
             local sticker = pack.stickers[index]
             local file = sticker and sticker.sticker
             local entry = file and self.tg.stickers[file.id]
