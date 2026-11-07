@@ -200,7 +200,22 @@ function messenger_screen:get_visible_chat_list()
     if self.list_kind == "filter" then
         return (self.tg.filter_chats or {})[self.list_filter_id] or {}
     end
-    return self.tg.chats
+    -- Фильтруем каналы из основного списка чатов (посты из каналов не должны засорять список)
+    local chats = self.tg.chats or {}
+    local filtered = {}
+    for _, chat in ipairs(chats) do
+        local t = chat.type
+        if t then
+            local is_channel = (t["@type"] == "chatTypeChannel")
+                or (t["@type"] == "chatTypeSupergroup" and t.is_channel == true)
+            if not is_channel then
+                filtered[#filtered + 1] = chat
+            end
+        else
+            filtered[#filtered + 1] = chat
+        end
+    end
+    return filtered
 end
 
 function messenger_screen:set_search_query(query, immediate)
