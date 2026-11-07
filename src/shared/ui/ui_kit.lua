@@ -51,7 +51,14 @@ local function emoji_font_for(font)
 end
 
 function ui.load_fonts(scale)
-    ui_scale = scale or 1.0
+    if scale == nil then
+        local w, h = love.graphics.getDimensions()
+        ui_scale = math.min(w / 640, h / 480)
+        if ui_scale < 0.5 then ui_scale = 0.5 end
+        if ui_scale > 2.0 then ui_scale = 2.0 end
+    else
+        ui_scale = scale
+    end
     local path = "fonts/AdwaitaSans-Regular.ttf"
     if not love.filesystem.getInfo(path) then
         path = nil

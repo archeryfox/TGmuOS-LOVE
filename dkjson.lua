@@ -183,6 +183,13 @@ local function num2str (num)
 end
 
 local function str2num (str)
+  -- Preserve large integers (> 2^53) as strings to avoid precision loss
+  if not str:find(".", 1, true) and not str:find("e", 1, true) and not str:find("E", 1, true) then
+    local n = tonumber(str)
+    if n and (n > 9007199254740992 or n < -9007199254740992) then
+      return str
+    end
+  end
   local num = tonumber(replace(str, ".", decpoint))
   if not num then
     updatedecpoint()

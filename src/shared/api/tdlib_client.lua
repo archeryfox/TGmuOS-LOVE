@@ -617,6 +617,14 @@ function telegram:handle(object)
         local extra = tostring(object["@extra"] or "")
         if extra == "installed_sticker_sets" then
             self.installed_sticker_sets = object.sets or object.sticker_sets or {}
+            -- Try to find the sticker set by ID and open it by name
+            local target_id = tostring(self._pending_sticker_set_id or "")
+            for _, set in ipairs(self.installed_sticker_sets) do
+                if tostring(set.id or "") == target_id and set.name then
+                    self:open_sticker_set_by_name(set.name)
+                    return
+                end
+            end
         end
     elseif kind == "message" then
         local extra = tostring(object["@extra"] or "")
@@ -925,6 +933,15 @@ function telegram:open_sticker_set(message)
     if not set_id and not set_name then
         return false
     end
+    -- Store set_id in message for link-based fallback
+    if message then
+        message._sticker_set_id = set_id
+    end
+    self._pending_sticker_set_id = set_id
+    -- Try getInstalledStickerSets to find the set name
+    self:load_installed_sticker_sets()
+    -- Try loading installed sticker sets to find the name
+    self:load_installed_sticker_sets()
     self.sticker_set_generation = self.sticker_set_generation + 1
     local gen = self.sticker_set_generation
     self.sticker_set_viewer = {loading = true, error = nil, stickers = {}, title = set_name or ""}
@@ -934,11 +951,10 @@ function telegram:open_sticker_set(message)
             name = set_name,
         }, "sticker_set:" .. tostring(gen) .. ":" .. tostring(set_id or set_name))
     elseif set_id then
-        set_id = tonumber(set_id) or set_id
-        self:send({
-            ["@type"] = "getStickerSet",
-            sticker_set_id = set_id,
-        }, "sticker_set:" .. tostring(gen) .. ":" .. tostring(set_id))
+        -- Send raw JSON with ID as number (preserve int64 precision via string concat)
+        local raw_req = '{"@type":"getStickerSet","sticker_set_id":' .. tostring(set_id) .. ',"@extra":"sticker_set:' .. tostring(gen) .. ':' .. tostring(set_id) .. '"}'
+        self.in_channel:push({type = "send", req = raw_req})
+        log_to_file(self, "TDLib: sent raw getStickerSet id=" .. tostring(set_id))
     end
     return true
 end
@@ -968,7 +984,12 @@ end
 
 function telegram:open_sticker_set_by_link(link)
     if not link or link == "" then return false end
-    local name = link:match("addstickers/(.+)") or link:match("stickers/(.+)")
+    -- Strip scheme/host/query/fragment, keep the sticker set name
+    local name = link:match("addstickers/([^/?&#]+)") or link:match("stickers/([^/?&#]+)")
+    if not name or name == "" then
+        -- Maybe a bare name was passed
+        name = link:match("^([%w_]+)$")
+    end
     if not name or name == "" then return false end
     name = name:gsub("[^%w_]", "")
     if name == "" then return false end

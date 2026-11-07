@@ -67,6 +67,10 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         if ms.tg.open_sticker_set then
             ms.tg:open_sticker_set(cm.message)
         end
+    elseif item.action == "open_sticker_pack_from_link" then
+        if item.link and ms.tg.open_sticker_set_by_link then
+            ms.tg:open_sticker_set_by_link(item.link)
+        end
     elseif item.action == "view_fullscreen" then
         ms.fullscreen_media = {message = cm.message, index = 1, playing = false}
     elseif item.action == "download_sticker" then

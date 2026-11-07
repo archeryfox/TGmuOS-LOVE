@@ -846,6 +846,20 @@ function messenger_screen:context_menu_items(message)
             items[#items + 1] = {label = play_label, action = "play_media"}
         end
     end
+    -- Detect sticker pack link in message text
+    local msg_text = ""
+    if message and message.content then
+        if message.content.text and message.content.text.text then
+            msg_text = message.content.text.text
+        elseif message.content.caption and message.content.caption.text then
+            msg_text = message.content.caption.text
+        end
+    end
+    local sticker_link = msg_text:match("https?://t%.me/addstickers/[^%s]+") or msg_text:match("https?://telegram%.me/addstickers/[^%s]+")
+    if sticker_link then
+        items[#items + 1] = {label = "Открыть стикерпак", action = "open_sticker_pack_from_link", link = sticker_link}
+    end
+
     items[#items + 1] = {label = "Копировать", action = "copy"}
     items[#items + 1] = {label = "Реакция", action = "react"}
     items[#items + 1] = {label = "Переслать", action = "forward"}
