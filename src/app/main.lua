@@ -11,7 +11,7 @@ local tg
 local current
 local screens
 local fonts
-local settings_scale = 1.0
+local settings_scale = 0.9
 local settings_open = false
 local account_store = {active_key = "account_1", accounts = {}}
 local pending_account_key

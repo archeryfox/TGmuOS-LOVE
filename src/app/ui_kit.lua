@@ -18,7 +18,7 @@ ui.colors = {
 }
 
 local fonts = {}
-local ui_scale = 1.0
+local ui_scale = 0.9
 
 local function load_font(path, size)
     local scale_size = math.floor(size * ui_scale)

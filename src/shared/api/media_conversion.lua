@@ -150,6 +150,32 @@ return function(telegram)
             entry.status = "error"
             return
         end
+        -- Downscale oversized images via ffmpeg to reduce VRAM (avoids black-canvas bug)
+        local iw, ih = image_data:getWidth(), image_data:getHeight()
+        if math.max(iw, ih) > 1024 then
+            local save_dir = love.filesystem.getSaveDirectory()
+            local out_path = save_dir .. "/ds_" .. tostring(file_id) .. ".png"
+            os.remove(out_path)
+            local quoted_input = "'" .. tostring(path):gsub("'", "'\\''") .. "'"
+            local quoted_output = "'" .. out_path:gsub("'", "'\\''") .. "'"
+            local cmd = "env -u LD_LIBRARY_PATH ffmpeg -y -v error -threads 1 -i " .. quoted_input ..
+                " -vf scale=1024:1024:force_original_aspect_ratio=decrease -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null"
+            local ret = os.execute(cmd)
+            local f = io.open(out_path, "rb")
+            if (ret == 0 or ret == true) and f then
+                local sz = f:seek("end")
+                f:seek("set", 0)
+                local d = f:read("*a")
+                f:close()
+                if d and d ~= "" then
+                    local okf, fd = pcall(love.filesystem.newFileData, d, "ds_" .. tostring(file_id))
+                    if okf and fd then
+                        local oki, idi = pcall(love.image.newImageData, fd)
+                        if oki and idi then image_data = idi end
+                    end
+                end
+            end
+        end
         local ok3, image = pcall(love.graphics.newImage, image_data)
         if not ok3 or not image then
             entry.status = "error"

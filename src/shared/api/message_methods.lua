@@ -383,7 +383,7 @@ return function(telegram)
             reaction[1] = {["@type"] = "reactionTypeEmoji", emoji = emoji}
         end
         self:send({
-            ["@type"] = "setMessageReaction",
+            ["@type"] = "setMessageReactions",
             chat_id = chat_id,
             message_id = message_id,
             reaction = reaction,
