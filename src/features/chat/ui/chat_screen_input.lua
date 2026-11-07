@@ -138,10 +138,7 @@ return function(messenger_screen, layout)
             items[#items + 1] = {label = title, action = "open_sticker_pack_by_name", name = set.name}
         end
         if #items == 0 then
-            items = {
-                {label = "Набор 1 (Zhivchiks)", action = "open_sticker_pack_by_name", name = "Zhivchiks"},
-                {label = "Набор 2 (HotCherry)", action = "open_sticker_pack_by_name", name = "HotCherry"},
-            }
+            items[#items + 1] = {label = "Нет установленных стикерпаков", action = nil}
         end
         items[#items + 1] = {label = "Открыть по ссылке", action = "open_sticker_pack_by_link", name = ""}
         self.context_menu = {
@@ -744,18 +741,6 @@ self.fullscreen_zoom = 1
             return
         end
 
-        if key == "k" then
-            if self.tg.current_chat_id then
-                self.tg:open_sticker_set_by_name("Zhivchiks")
-            end
-            return
-        end
-        if key == "l" then
-            if self.tg.current_chat_id then
-                self.tg:open_sticker_set_by_name("HotCherry")
-            end
-            return
-        end
         if key == "y" then
             if self.tg.current_chat_id then
                 local message = self:focused_message()
