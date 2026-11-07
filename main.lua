@@ -267,7 +267,8 @@ function love.load()
     vpn_thread = love.thread.newThread("threads/vpn_status_worker.lua")
     vpn_in = love.thread.getChannel("vpn_status_in")
     vpn_out = love.thread.getChannel("vpn_status_out")
-    vpn_thread:start({
+    vpn_thread:start()
+    vpn_in:push({
         config_dir = "/mnt/mmc/MUOS/application/muvpn_love",
         python = "/mnt/mmc/MUOS/PortMaster/runtimes/python/bin/python3",
         script = "/mnt/mmc/MUOS/application/muvpn_love/muvpn.py",
@@ -610,7 +611,6 @@ end
 
 function love.quit()
     if vpn_in then vpn_in:push("quit") end
-    if vpn_thread then vpn_thread:wait() end
     if tg then tg:shutdown() end
     return false
 end

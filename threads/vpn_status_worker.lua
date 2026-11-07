@@ -76,9 +76,10 @@ local function handle(command)
 end
 
 while true do
-    local command = in_channel:demand()
+    local command = in_channel:pop()
     if command == "quit" then break end
     if type(command) == "string" then
         handle(command)
     end
+    love.timer.sleep(0.05)
 end
