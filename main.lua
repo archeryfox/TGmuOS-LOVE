@@ -372,6 +372,12 @@ end
 
 function love.draw()
     if current and current.draw then current:draw() end
+    -- Global mouse cursor icon
+    local mx, my = love.mouse.getPosition()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.polygon("fill", mx, my, mx + 12, my + 4, mx + 4, my + 12)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.polygon("line", mx, my, mx + 12, my + 4, mx + 4, my + 12)
 end
 
 handle_key = function(key, from_gamepad)
