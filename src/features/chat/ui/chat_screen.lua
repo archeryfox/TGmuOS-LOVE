@@ -93,7 +93,11 @@ local function render_markdown(text, x, y, width, font, color)
     local style = seg[2]
     local segtext = seg[1]
     -- split by words for wrapping
-    for word in segtext:gmatch("%S+") do
+    -- handle newlines within segment
+    local parts = {}
+    for part in (segtext .. "\n"):gmatch("([^\n]*)\n") do parts[#parts+1] = part end
+    for _, part in ipairs(parts) do
+      for word in part:gmatch("%S+") do
       local w = font:getWidth(word .. " ")
       if cur_x + w > x + width and cur_x > x then
         cur_x = x
@@ -111,6 +115,12 @@ local function render_markdown(text, x, y, width, font, color)
       local seg_color = (style == "bold" and {1,1,1,1}) or (style == "italic" and {0.85,0.85,0.95,1}) or (style == "code" and {0.9,0.9,0.6,1}) or color
       ui.text(word, cur_x, cur_y, font, seg_color)
       cur_x = cur_x + font:getWidth(word .. " ")
+      end
+      -- newline within segment
+      if part ~= parts[#parts] then
+        cur_x = x
+        cur_y = cur_y + line_h
+      end
     end
     -- handle spaces between segments: add a space
     if cur_x > x then
