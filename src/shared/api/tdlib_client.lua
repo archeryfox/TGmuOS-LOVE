@@ -977,6 +977,67 @@ function telegram:handle_sticker_set(object)
             self.sticker_set_viewer.name = object.name or self.sticker_set_viewer.name or ""
             self.sticker_set_viewer.stickers = object.stickers or self.sticker_set_viewer.stickers or {}
             self.sticker_set_viewer.thumbnail = object.thumbnail or self.sticker_set_viewer.thumbnail
+            -- Запускаем загрузку/декод изображений стикеров из набора
+            for _, sticker in ipairs(object.stickers or {}) do
+                local file = sticker and sticker.sticker
+                if file and file.id then
+                    self:load_sticker_file(file)
+                end
+            end
+        end
+    end
+end
+
+function telegram:load_sticker_file(file)
+    if not file or not file.id then return end
+    local file_id = file.id
+    local local_ = file.local or {}
+    local entry = self.stickers[file_id]
+    if not entry then
+        entry = {status = "remote", format = self.sticker_format_by_file[file_id], autoplay = false}
+        self.stickers[file_id] = entry
+    end
+    if local_.is_downloading_completed and local_.path and local_.path ~= "" then
+        entry.source_path = local_.path
+        local format = self.sticker_format_by_file[file_id]
+        local is_animated = (format == "stickerFormatWebm" or format == "stickerFormatTgs")
+            if is_animated then
+                self.animation_by_message[file_id] = file_id
+                if not self.animations[file_id] then self.animations[file_id] = {status = "remote", autoplay = true} end
+                local anim_entry = self.animations[file_id]
+                anim_entry.source_path = local_.path
+                if not anim_entry.image then
+                    local preview = self:convert_to_png(local_.path)
+                    if preview then
+                        self:load_image(file_id, preview, self.animations)
+                        entry.image = anim_entry.image  -- mirror preview into stickers table for pack viewer
+                    end
+                end
+                if not anim_entry.frames and not anim_entry.decode_requested then
+                    self:queue_media_decode("sticker", file_id, local_.path)
+                end
+            end
+            else
+            if not entry.image then
+                local converted = self:convert_to_png(local_.path)
+                if converted then self:load_image(file_id, converted, self.stickers)
+                else self:load_sticker(file_id, local_.path) end
+            end
+        end
+    elseif not entry.download_requested then
+        entry.download_requested = true
+        entry.status = "downloading"
+        local extra = self:send({
+            ["@type"] = "downloadFile",
+            file_id = file_id,
+            priority = 1,
+            offset = 0,
+            limit = 0,
+            synchronous = false,
+        }, "sticker:" .. tostring(file_id))
+        if not extra then
+            entry.download_requested = false
+            entry.status = "remote"
         end
     end
 end

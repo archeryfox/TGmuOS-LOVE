@@ -63,6 +63,31 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         if ms.tg.ensure_photo_hires then
             ms.tg:ensure_photo_hires(cm.message)
         end
+    elseif item.action == "open_sticker_pack" then
+        if ms.tg.open_sticker_set then
+            ms.tg:open_sticker_set(cm.message)
+        end
+    elseif item.action == "view_fullscreen" then
+        ms.fullscreen_media = {message = cm.message, index = 1, playing = false}
+    elseif item.action == "download_sticker" then
+        local sticker = cm.message.content and cm.message.content.sticker
+        local file = sticker and sticker.sticker
+        if file and file.id and ms.tg.add_proxy == nil then
+            local entry = ms.tg.stickers and ms.tg.stickers[file.id]
+            if not entry or not entry.download_requested then
+                if entry then entry.download_requested = true; entry.status = "downloading" end
+                ms.tg:send({
+                    ["@type"] = "downloadFile",
+                    file_id = file.id,
+                    priority = 1,
+                    offset = 0,
+                    limit = 0,
+                    synchronous = false,
+                }, "sticker:" .. tostring(file.id))
+            end
+        end
+    elseif item.action == "react" then
+        ms.reaction_target = cm.message
     end
 end
 

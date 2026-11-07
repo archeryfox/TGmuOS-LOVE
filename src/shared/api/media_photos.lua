@@ -78,6 +78,7 @@ return function(telegram)
             return
         end
         local file_id = size.photo.id
+        self.photo_by_message[message.id] = file_id
         local entry = self.photos[file_id]
         if not entry then
             entry = {status = "downloading"}
