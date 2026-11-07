@@ -921,16 +921,25 @@ function telegram:open_sticker_set(message)
     end
     local sticker = content.sticker
     local set_id = sticker and sticker.set_id
-    if not set_id then
+    local set_name = sticker and sticker.set_name
+    if not set_id and not set_name then
         return false
     end
     self.sticker_set_generation = self.sticker_set_generation + 1
     local gen = self.sticker_set_generation
-    self.sticker_set_viewer = {loading = true, error = nil, stickers = {}, title = sticker.set_name or ""}
-    self:send({
-        ["@type"] = "getStickerSet",
-        sticker_set_id = set_id,
-    }, "sticker_set:" .. tostring(gen) .. ":" .. tostring(set_id))
+    self.sticker_set_viewer = {loading = true, error = nil, stickers = {}, title = set_name or ""}
+    if set_name and set_name ~= "" then
+        self:send({
+            ["@type"] = "searchStickerSet",
+            name = set_name,
+        }, "sticker_set:" .. tostring(gen) .. ":" .. tostring(set_id or set_name))
+    elseif set_id then
+        set_id = tonumber(set_id) or set_id
+        self:send({
+            ["@type"] = "getStickerSet",
+            sticker_set_id = set_id,
+        }, "sticker_set:" .. tostring(gen) .. ":" .. tostring(set_id))
+    end
     return true
 end
 
@@ -981,6 +990,10 @@ function telegram:handle_sticker_set(object)
             for _, sticker in ipairs(object.stickers or {}) do
                 local file = sticker and sticker.sticker
                 if file and file.id then
+                    -- Сохраняем формат стикера
+                    if sticker.format and sticker.format["@type"] then
+                        self.sticker_format_by_file[file.id] = sticker.format["@type"]
+                    end
                     self:load_sticker_file(file)
                 end
             end
