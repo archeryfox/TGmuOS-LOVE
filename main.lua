@@ -609,6 +609,8 @@ function love.mousepressed(x, y, button)
 end
 
 function love.quit()
+    if vpn_in then vpn_in:push("quit") end
+    if vpn_thread then vpn_thread:wait() end
     if tg then tg:shutdown() end
     return false
 end
