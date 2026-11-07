@@ -30,7 +30,9 @@ function cursor_nav.move_message_cursor(ms, delta)
     end
     local new_index = math.max(1, math.min(#nav, index + delta))
     if new_index ~= index then
+        -- Update logical cursor immediately (for scroll targeting)
         ms.message_cursor_id = nav[new_index].id
+        ms.message_cursor_target_id = nav[new_index].id
         ms:ensure_message_visible()
     end
 end

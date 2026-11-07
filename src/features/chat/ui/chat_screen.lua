@@ -169,6 +169,8 @@ function messenger_screen.new(fonts, tg)
     self.rmb_last_time = 0
     self.rmb_click_count = 0
     self.message_cursor_id = nil
+    self.display_cursor_id = nil
+    self.cursor_highlight_timer = 0
     self.nav_messages = {}
     self.nav_pos = {}
     self.conv_area_x = nil
@@ -204,6 +206,8 @@ function messenger_screen:select_chat(chat_id)
     self.model.scroll = 0
     self.smooth_scroll = 0
     self.message_cursor_id = nil
+    self.display_cursor_id = nil
+    self.cursor_highlight_timer = 0
     self.nav_messages = {}
     self.nav_pos = {}
     if self.search_active and self.search_query ~= "" then
@@ -391,10 +395,14 @@ function messenger_screen:update(dt)
     if self.smooth_scroll == nil or math.abs(target_scroll - self.smooth_scroll) > 2000 then
         self.smooth_scroll = target_scroll
     end
-    local factor = 1
+    local factor = 0.25
     self.smooth_scroll = self.smooth_scroll + (target_scroll - self.smooth_scroll) * factor
     if math.abs(target_scroll - self.smooth_scroll) < 0.5 then
         self.smooth_scroll = target_scroll
+        if self.message_cursor_target_id then
+            self.display_cursor_id = self.message_cursor_target_id
+            self.message_cursor_target_id = nil
+        end
     end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
 
@@ -1268,7 +1276,7 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
                 table.insert(self.message_hits, hit)
                 self:draw_message(item.message, area_x, y, area_w, height, max_bubble, padding, wrap_width, small_height, line_height, colors, hit)
             end
-            if nav_msg and self.message_cursor_id == nav_msg.id then
+            if nav_msg and self.display_cursor_id == nav_msg.id then
                 local c = colors.accent
                 ui.outline(area_x + 1, y + 1, area_w - 2, height - 2, {c[1], c[2], c[3], 0.9}, 6)
             end
@@ -1284,9 +1292,15 @@ function messenger_screen:draw_conversation(chat, left_width, right_width, h)
     self.nav_messages = ordered
     if self.message_cursor_id and not self.nav_pos[self.message_cursor_id] then
         self.message_cursor_id = nil
+        self.display_cursor_id = nil
     end
     if not self.message_cursor_id and #ordered > 0 then
         self.message_cursor_id = ordered[#ordered].id
+        self.display_cursor_id = ordered[#ordered].id
+    end
+    -- Sync display cursor when scroll is settled
+    if math.abs((self.model.scroll or 0) - (self.smooth_scroll or 0)) < 1 then
+        self.display_cursor_id = self.message_cursor_id
     end
 
     self.load_more_button = nil
