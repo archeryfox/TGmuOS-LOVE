@@ -475,8 +475,6 @@ self.fullscreen_zoom = 1
                 end
             elseif key == "a" then
                 if fm.kind ~= "video" and fm.kind ~= "video_note" then
-                    self.tg:ensure_photo_hires(fm.message)
-                    self.tg.action_status = "Загрузка в HiRes..."
                 end
             elseif key == "right" then
                 if fm.kind ~= "video" and self.r2_pressed then
@@ -787,11 +785,6 @@ self.fullscreen_zoom = 1
         end
         if self.fullscreen_media then
             if button == 1 and (self.fullscreen_media.kind == "photo" or self.fullscreen_media.kind == "animation" or self.fullscreen_media.kind == "video") then
-                local full_kind = self.fullscreen_media.kind
-                if full_kind == "photo" then
-                    -- X on fullscreen photo: download the full-quality file and display it
-                    self.tg:ensure_photo_hires(self.fullscreen_media.message)
-                end
             end
             if button == 1 and self.fullscreen_media.kind == "video" then
                 local controls = self.player_controls
