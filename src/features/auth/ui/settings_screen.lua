@@ -181,7 +181,7 @@ local is_abxy = item.id == "abxy"
             ui.text("Enter — вибрировать", w - 200, y + 7, f.small, colors.muted)
             self.vibration_test_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_minimize then
-            ui.text("Свернуть приложение", 60, y + 7, f.normal, colors.text)
+            ui.text("Выйти в меню muOS", 60, y + 7, f.normal, colors.text)
             ui.text("Enter — свернуть", w - 180, y + 7, f.small, colors.muted)
             self.minimize_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_abxy then
@@ -309,8 +309,8 @@ function settings_screen:activate_item(item)
             self.tg.action_error = "Вибрация недоступна (нет API)"
         end
     elseif item.id == "minimize" then
-        if love.window and love.window.minimize then
-            love.window.minimize()
+        if love.event and love.event.quit then
+            love.event.quit()
             self.tg.action_status = "Приложение свёрнуто"
         end
     elseif item.id == "abxy" then
@@ -488,8 +488,8 @@ function settings_screen:mousepressed(x, y, button)
                     self.tg.action_error = "Вибрация недоступна (нет API)"
                 end
             elseif item.id == "minimize" then
-                if love.window and love.window.minimize then
-                    love.window.minimize()
+                if love.event and love.event.quit then
+                    love.event.quit()
                     self.tg.action_status = "Приложение свёрнуто"
                 end
             elseif item.id == "abxy" then
