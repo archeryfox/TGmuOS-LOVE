@@ -150,6 +150,16 @@ return function(telegram)
         else
             self:load_image(file_id, path, self.stickers)
         end
+        -- Resend pending sticker if this file is now ready
+        if self.pending_sticker_send and self.pending_sticker_send.sticker then
+            local sticker = self.pending_sticker_send.sticker
+            local f = sticker.sticker or sticker
+            if f and f.id == file_id then
+                local cid = self.pending_sticker_send.chat_id
+                self.pending_sticker_send = nil
+                self:send_sticker(cid, sticker)
+            end
+        end
     end
 
     function telegram:sticker_playback_supported(message)
