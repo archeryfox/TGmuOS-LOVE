@@ -151,6 +151,37 @@ return function(messenger_screen, layout)
         if self.keyboard then self.keyboard.visible = false end
     end
 
+    function messenger_screen:open_file_browser(path)
+        path = path or "/mnt/mmc/MUOS/screenshot/"
+        -- normalize
+        if path:sub(-1) ~= "/" then path = path .. "/" end
+        local files = {}
+        local ok, iter = pcall(love.filesystem.getDirectoryItems, path)
+        -- love.filesystem only sees save dir; use io.popen ls instead
+        local handle = io.popen("ls -1pa " .. "'" .. path:gsub("'", "'\\''") .. "' 2>/dev/null")
+        if handle then
+            for line in handle:lines() do
+                if line ~= "" and line ~= "./" and line ~= "../" then
+                    local is_dir = line:sub(-1) == "/"
+                    local name = is_dir and line:sub(1, -2) or line
+                    files[#files+1] = {name = name, is_dir = is_dir, path = path .. name}
+                end
+            end
+            handle:close()
+        end
+        -- sort: dirs first, then files
+        table.sort(files, function(a, b)
+            if a.is_dir ~= b.is_dir then return a.is_dir end
+            return a.name:lower() < b.name:lower()
+        end)
+        -- add parent dir entry if not root
+        if path ~= "/" then
+            table.insert(files, 1, {name = "..", is_dir = true, path = path:match("^(.*/)[^/]+/$") or "/"})
+        end
+        self.file_browser = {path = path, files = files, focus = 1, scroll = 0}
+        if self.keyboard then self.keyboard.visible = false end
+    end
+
     function messenger_screen:handle_virtual_keyboard(key)
         if key == "f1" then
             self:open_sticker_pack_list()
@@ -167,6 +198,8 @@ return function(messenger_screen, layout)
                 self:keyboard_enter()
             elseif result.kind == "stickers" then
                 self:open_sticker_pack_list()
+            elseif result.kind == "files" then
+                self:open_file_browser("/mnt/mmc/MUOS/screenshot/")
             end
         end
         return true
@@ -392,6 +425,48 @@ self.fullscreen_zoom = 1
     function messenger_screen:keypressed(key)
         if self.keyboard and self.keyboard.visible then
             if self:handle_virtual_keyboard(key) then return end
+        end
+        if self.file_browser then
+            local fb = self.file_browser
+            local files = fb.files or {}
+            if key == "escape" or key == "b" then
+                self.file_browser = nil
+                return
+            end
+            if #files == 0 then return end
+            if key == "up" then
+                fb.focus = math.max(1, (fb.focus or 1) - 1)
+            elseif key == "down" then
+                fb.focus = math.min(#files, (fb.focus or 1) + 1)
+            elseif key == "a" or key == "return" or key == "kpenter" then
+                local sel = files[fb.focus or 1]
+                if sel then
+                    if sel.is_dir then
+                        self:open_file_browser(sel.path)
+                    else
+                        -- send file
+                        if self.tg.current_chat_id then
+                            local ext = sel.name:match("%.([^%.]+)$")
+                            ext = ext and ext:lower() or ""
+                            if ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "webp" then
+                                self.tg:send_photo(self.tg.current_chat_id, sel.path)
+                            else
+                                self.tg:send_document(self.tg.current_chat_id, sel.path)
+                            end
+                        end
+                        self.file_browser = nil
+                    end
+                end
+            elseif key == "pageup" then
+                fb.focus = math.max(1, (fb.focus or 1) - 10)
+            elseif key == "pagedown" then
+                fb.focus = math.min(#files, (fb.focus or 1) + 10)
+            end
+            return
+        end
+        if key == "f" and self.tg.current_chat_id and not self.keyboard.visible then
+            self:open_file_browser("/mnt/mmc/MUOS/screenshot/")
+            return
         end
         if self.text_preview then
             local tp = self.text_preview

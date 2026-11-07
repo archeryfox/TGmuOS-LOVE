@@ -523,6 +523,53 @@ function messenger_screen:draw()
     self:draw_fullscreen_media(w, h)
     self:draw_sticker_pack(w, h)
     self:draw_text_preview(w, h)
+    self:draw_file_browser(w, h)
+end
+
+function messenger_screen:draw_file_browser(w, h)
+    local fb = self.file_browser
+    if not fb then return end
+    local f = self.fonts
+    local colors = ui.colors
+    love.graphics.setColor(0, 0, 0, 0.92)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    local panel_w = math.min(w - 32, 760)
+    local panel_h = math.min(h - 32, 620)
+    local panel_x = (w - panel_w) / 2
+    local panel_y = (h - panel_h) / 2
+    ui.rect(panel_x, panel_y, panel_w, panel_h, colors.panel, 8)
+    ui.outline(panel_x, panel_y, panel_w, panel_h, colors.accent, 8)
+    ui.text(ui.fit("Файлы: " .. (fb.path or ""), f.subtitle, panel_w - 24), panel_x + 12, panel_y + 8, f.subtitle, colors.text)
+    local files = fb.files or {}
+    if #files == 0 then
+        ui.text("Папка пуста", panel_x + 12, panel_y + 40, f.small, colors.muted)
+        ui.text("Esc/B — закрыть", panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
+        return
+    end
+    local line_h = 24
+    local visible = math.floor((panel_h - 60) / line_h)
+    local focus = fb.focus or 1
+    local scroll = fb.scroll or 0
+    local max_scroll = math.max(0, #files - visible)
+    if focus < scroll + 1 then scroll = focus - 1 end
+    if focus > scroll + visible then scroll = focus - visible end
+    scroll = math.max(0, math.min(max_scroll, scroll))
+    fb.scroll = scroll
+    love.graphics.setScissor(panel_x + 8, panel_y + 36, panel_w - 16, panel_h - 52)
+    local y = panel_y + 36
+    for i = scroll + 1, math.min(#files, scroll + visible) do
+        local entry = files[i]
+        local is_focus = (i == focus)
+        if is_focus then
+            ui.rect(panel_x + 8, y - 2, panel_w - 16, line_h, colors.accent, 4)
+        end
+        local icon = entry.is_dir and "📁" or "📄"
+        local col = is_focus and colors.bg or colors.text
+        ui.text(ui.fit(icon .. " " .. entry.name, f.tiny, panel_w - 24), panel_x + 12, y + 4, f.tiny, col)
+        y = y + line_h
+    end
+    love.graphics.setScissor()
+    ui.text("↑↓ навигация · A Enter/отправить · B/Esc закрыть · PgUp/PgDn", panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
 end
 
 function messenger_screen:draw_text_preview(w, h)
@@ -985,6 +1032,7 @@ function messenger_screen:chat_context_menu_items(chat)
         {label = muted and "Размутить" or "Замутить навсегда", action = muted and "unmute_chat" or "mute_chat"},
         {label = is_archived and "Вернуть из архива" or "Отправить в архив", action = is_archived and "unarchive_chat" or "archive_chat"},
         {label = "Мой профиль", action = "open_my_profile"},
+        {label = "Отправить файл", action = "open_file_browser"},
     }
     local chat_type = chat and chat.type and chat.type["@type"]
     if chat_type ~= "chatTypePrivate" and chat_type ~= "chatTypeSecret" then

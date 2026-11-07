@@ -64,9 +64,9 @@ function context_menu_handler.activate_context_item(ms, cm, item)
             ms.tg:ensure_photo_hires(cm.message)
         end
     elseif item.action == "open_my_profile" then
-        if ms.wants_profile_self ~= nil then
-            ms.wants_profile_self = true
-        end
+        if ms.wants_profile_self ~= nil then ms.wants_profile_self = true end
+    elseif item.action == "open_file_browser" then
+        ms:open_file_browser("/mnt/mmc/MUOS/screenshot/")
     elseif item.action == "preview_text" then
         if cm.message then
             ms.text_preview = {loading = true, lines = {}, scroll = 0, message = cm.message}

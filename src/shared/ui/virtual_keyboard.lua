@@ -71,6 +71,7 @@ local CONTROLS = {
     {label = "Пробел", action = "space", width = 120},
     {label = "😀", action = "emoji", width = 52},
     {label = "Стикеры", action = "stickers", width = 62},
+    {label = "Файлы", action = "files", width = 58},
     {label = "⌫", action = "backspace", width = 52},
     {label = "⏎", action = "enter", width = 52},
     {label = "Скрыть", action = "hide", width = 66},
@@ -226,6 +227,8 @@ function keyboard:activate()
         return {kind = "hide"}
     elseif control.action == "stickers" then
         return {kind = "stickers"}
+    elseif control.action == "files" then
+        return {kind = "files"}
     end
     return nil
 end

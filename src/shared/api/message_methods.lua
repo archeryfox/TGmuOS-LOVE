@@ -234,6 +234,38 @@ return function(telegram)
         })
     end
 
+    function telegram:send_document(chat_id, path)
+        if not chat_id or not path then return end
+        self:send({
+            ["@type"] = "sendMessage",
+            chat_id = chat_id,
+            input_message_content = {
+                ["@type"] = "inputMessageDocument",
+                document = {
+                    ["@type"] = "inputFileLocal",
+                    path = path,
+                },
+                caption = nil,
+            },
+        })
+    end
+
+    function telegram:send_photo(chat_id, path)
+        if not chat_id or not path then return end
+        self:send({
+            ["@type"] = "sendMessage",
+            chat_id = chat_id,
+            input_message_content = {
+                ["@type"] = "inputMessagePhoto",
+                photo = {
+                    ["@type"] = "inputFileLocal",
+                    path = path,
+                },
+                caption = nil,
+            },
+        })
+    end
+
     function telegram:send_message(chat_id, text)
         if not chat_id or not text or text == "" then
             return
