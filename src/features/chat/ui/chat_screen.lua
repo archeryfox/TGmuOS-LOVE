@@ -438,6 +438,28 @@ function messenger_screen:update(dt)
     end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
 
+    -- Smooth panning in fullscreen media
+    if self.fullscreen_media then
+        local pan_x = self.fullscreen_pan_x or 0
+        local pan_y = self.fullscreen_pan_y or 0
+        local target_x = self.fullscreen_pan_target_x
+        local target_y = self.fullscreen_pan_target_y
+        if target_x ~= nil then
+            local factor = 1 - math.exp(-12 * dt)
+            pan_x = pan_x + (target_x - pan_x) * factor
+            if math.abs(target_x - pan_x) < 0.5 then pan_x = target_x; target_x = nil end
+            self.fullscreen_pan_x = pan_x
+            self.fullscreen_pan_target_x = target_x
+        end
+        if target_y ~= nil then
+            local factor = 1 - math.exp(-12 * dt)
+            pan_y = pan_y + (target_y - pan_y) * factor
+            if math.abs(target_y - pan_y) < 0.5 then pan_y = target_y; target_y = nil end
+            self.fullscreen_pan_y = pan_y
+            self.fullscreen_pan_target_y = target_y
+        end
+    end
+
     -- Hold-to-scroll: while nav keys are held, accumulate scroll deltas
     local held_keys = {}
     if self.tg and love and love.keyboard and love.keyboard.isDown then
@@ -889,7 +911,24 @@ function messenger_screen:draw_fullscreen_media(w, h)
         end
     else
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf("Загрузка медиа…", 24, h / 2, w - 48, "center")
+        local progress_text = "Загрузка медиа…"
+        if fullscreen.kind == "photo" and fullscreen.message then
+            local msg = fullscreen.message
+            local file_id = msg and self.tg.photo_by_message and self.tg.photo_by_message[msg.id]
+            local entry = file_id and self.tg.photos and self.tg.photos[file_id]
+            if entry and entry.download_progress then
+                progress_text = string.format("Загрузка… %d%%", math.floor((entry.download_progress or 0) * 100))
+            end
+            -- hi-res progress
+            if self.tg.photo_hires_by_message and self.tg.photo_hires_by_message[msg.id] then
+                local hid = self.tg.photo_hires_by_message[msg.id]
+                local he = self.tg.photos and self.tg.photos[hid]
+                if he and he.status == "downloading" and he.download_progress then
+                    progress_text = string.format("Hi-Res: %d%%", math.floor((he.download_progress or 0) * 100))
+                end
+            end
+        end
+        love.graphics.printf(progress_text, 24, h / 2, w - 48, "center")
     end
 
     if fullscreen.kind == "video" then

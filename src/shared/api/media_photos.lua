@@ -78,7 +78,8 @@ return function(telegram)
             return
         end
         local file_id = size.photo.id
-        self.photo_by_message[message.id] = file_id
+        self.photo_hires_by_message = self.photo_hires_by_message or {}
+        self.photo_hires_by_message[message.id] = file_id
         local entry = self.photos[file_id]
         if not entry then
             entry = {status = "downloading"}
@@ -97,6 +98,15 @@ return function(telegram)
 
     function telegram:photo_image(message, index)
         index = index or 1
+        -- Prefer hi-res if downloaded
+        if message and message.id then
+            self.photo_hires_by_message = self.photo_hires_by_message or {}
+            local hires_id = self.photo_hires_by_message[message.id]
+            local hires_entry = hires_id and self.photos[hires_id]
+            if hires_entry and hires_entry.image then
+                return hires_entry.image, hires_entry.width, hires_entry.height
+            end
+        end
         local content = message and message.content
         local photos = content and content.photos
         if photos and #photos >= index then
