@@ -1001,8 +1001,9 @@ self.fullscreen_zoom = 1
                 end
             end
         end
+    end
 
-        local left_width = math.floor(ui.width() * 0.30)
+    local left_width = math.floor(ui.width() * 0.30)
         local mx = love.mouse.getX()
         if mx < left_width then
             local visible = math.max(1, math.floor((ui.height() - HEADER_HEIGHT) / ITEM_HEIGHT))
