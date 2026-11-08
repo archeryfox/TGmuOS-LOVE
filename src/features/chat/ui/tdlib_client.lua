@@ -41,7 +41,7 @@ function telegram.new()
     self.proxy_added = false
     self.proxy_ready = false
     self.proxy_flat = false
-    self.tdlib_parameters_nested = false
+    self.tdlib_parameters_nested = true
     self.encryption_key_sent = false
 
     self.me = nil
@@ -634,9 +634,9 @@ function telegram:handle(object)
         local qr_query_in_progress = extra == "qr"
             and message:find("Another authorization query has started", 1, true) ~= nil
         if object.code == 400 and extra == "tdlib_params"
-            and not self.tdlib_parameters_nested
+            and self.tdlib_parameters_nested
             and message:find("Parameters aren't specified", 1, true) then
-            self.tdlib_parameters_nested = true
+            self.tdlib_parameters_nested = false
             self:send_tdlib_parameters()
             return
         end
