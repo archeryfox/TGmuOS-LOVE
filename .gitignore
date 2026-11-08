@@ -18,3 +18,4 @@ proxy.conf
 accounts.json
 data/
 *.log
+.obsidian/
