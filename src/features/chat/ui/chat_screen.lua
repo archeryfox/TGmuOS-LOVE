@@ -701,7 +701,7 @@ function messenger_screen:draw_sticker_pack(w, h)
         end
         love.graphics.setScissor()
     end
-    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · стрелки фокус · A/X отправить · Enter предпросмотр · Esc закрыть",
+    ui.text(tostring(#(pack.stickers or {})) .. " стикеров · стрелки фокус · A отправить · X предпросмотр · Esc закрыть",
         panel_x + 18, panel_y + panel_h - 25, fonts.tiny, colors.muted)
 
     -- Fullscreen sticker preview

@@ -449,7 +449,6 @@ self.fullscreen_zoom = 1
                     if sel.is_dir then
                         self:open_file_browser(sel.path)
                     else
-                        -- send file
                         if self.tg.current_chat_id then
                             local ext = sel.name:match("%.([^%.]+)$")
                             ext = ext and ext:lower() or ""
@@ -458,6 +457,9 @@ self.fullscreen_zoom = 1
                             else
                                 self.tg:send_document(self.tg.current_chat_id, sel.path)
                             end
+                            self.tg.action_status = "Отправка файла…"
+                        else
+                            self.tg.action_error = "Откройте чат для отправки"
                         end
                         self.file_browser = nil
                     end
