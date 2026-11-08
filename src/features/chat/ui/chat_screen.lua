@@ -1734,10 +1734,8 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
     if image then
         local media_x, media_y = x + padding, text_y
         local content_kind = message.content and message.content["@type"]
-        -- Clip media to conversation area so it never overflows onto title/profile layers
-        if self.conv_area_x then
-            love.graphics.setScissor(self.conv_area_x, self.conv_area_y, self.conv_area_w, self.conv_area_h)
-        end
+        -- Clip media to the message bubble so it never overflows onto other layers
+        love.graphics.setScissor(math.floor(x), math.floor(y), math.ceil(bubble_w), math.ceil(height))
         if content_kind == "messageVideoNote" then
             draw_circle_image(image, media_x, media_y, image_width)
             -- Duration label in corner
@@ -1754,7 +1752,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
             local scale = image_width / image:getWidth()
             love.graphics.draw(image, media_x, media_y, 0, scale, scale)
         end
-        if self.conv_area_x then love.graphics.setScissor(self.conv_area_x, self.conv_area_y, self.conv_area_w, self.conv_area_h) end
+        love.graphics.setScissor(self.conv_area_x or 0, self.conv_area_y or 0, self.conv_area_w or 9999, self.conv_area_h or 9999)
         if content_kind == "messagePhoto" or content_kind == "messageVideo" or content_kind == "messageVideoNote" then
             hit.media = true
             hit.media_kind = (content_kind == "messagePhoto") and "photo" or "video"
