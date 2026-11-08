@@ -988,7 +988,7 @@ function messenger_screen:draw_fullscreen_media(w, h)
             local pan_x = self.fullscreen_pan_x or 0
             local pan_y = self.fullscreen_pan_y or 0
             local draw_x = (w - draw_w) / 2 + pan_x
-            local draw_y = (h - draw_h) / 2 + pan_y - panel_h / 2
+            local draw_y = (h - draw_h) / 2 + pan_y
             -- Clamp draw area to allow panning within image bounds
             if draw_w > w then
                 draw_x = math.max(w - draw_w, math.min(draw_x, 0))
@@ -1001,7 +1001,11 @@ function messenger_screen:draw_fullscreen_media(w, h)
                 draw_y = math.max(h - draw_h, math.min(draw_y, 0))
             else
                 local pan_y_max = (h - draw_h) / 2
-                draw_y = math.max(-pan_y_max, math.min(draw_y, pan_y_max)) - panel_h / 2
+                draw_y = math.max(-pan_y_max, math.min(draw_y, pan_y_max))
+            end
+            -- Only subtract panel_h/2 when showing a panel (video/video_note)
+            if fullscreen.kind == "video" or fullscreen.kind == "video_note" then
+                draw_y = draw_y - panel_h / 2
             end
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.draw(image, draw_x, draw_y, 0, scale, scale)
