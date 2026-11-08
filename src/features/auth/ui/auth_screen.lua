@@ -206,7 +206,7 @@ function auth_screen:build_keyboard()
             {ch = ","},
             {label = "Ввод", action = "enter", w = 140},
         }
-        L[6] = {{label = "Закрыть все процессы ТГ", action = "close_all", w = 400}}
+        L[6] = {{label = "Назад", action = "back", w = 120}, {label = "Закрыть все процессы ТГ", action = "close_all", w = 280}}
     else
         L[1] = key_chars({"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"})
         L[2] = key_chars({"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"})
@@ -221,9 +221,10 @@ function auth_screen:build_keyboard()
             L[5][#L[5] + 1] = {ch = ch}
         end
         L[6] = {
-            {label = "Пробел", action = "space", w = 200},
+            {label = "Назад", action = "back", w = 90},
+            {label = "Пробел", action = "space", w = 170},
             {ch = ","},
-            {label = "Ввод", action = "enter", w = 140},
+            {label = "Ввод", action = "enter", w = 120},
         }
         L[7] = {{label = "Закрыть все процессы ТГ", action = "close_all", w = 400}}
     end
@@ -255,6 +256,10 @@ function auth_screen:activate_kb()
     elseif k.action == "layer" then
         self.kb_layer = (self.kb_layer == "abc") and "sym" or "abc"
         self:build_keyboard()
+    elseif k.action == "back" then
+        if self.callbacks and self.callbacks.restart_account then
+            self.callbacks.restart_account()
+        end
     elseif k.action == "backspace" then
         self.password = ui.remove_last_utf8(self.password)
     elseif k.action == "space" then
@@ -286,7 +291,7 @@ function auth_screen:draw_password(w, h)
     -- Back button
     local btn_w, btn_h = 200, 34
     local bx = math.floor((w - btn_w) / 2)
-    local by = h - 70
+    local by = 150
     ui.rect(bx, by, btn_w, btn_h, colors.panel_alt, 6)
     ui.outline(bx, by, btn_w, btn_h, colors.accent, 6)
     local lbl = "Назад"
