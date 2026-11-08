@@ -103,6 +103,10 @@ local function render_markdown(text, x, y, width, font, color)
         cur_x = x
         cur_y = cur_y + line_h
       end
+      -- If word is still wider than available width, force wrap (split is not possible, so just draw it overflowing)
+      if cur_x == x and cur_x + w > x + width then
+        -- Word too long for line width, draw anyway but it will overflow
+      end
       if style == "bold" then
         love.graphics.setColor(1, 1, 1, 1)
       elseif style == "italic" then

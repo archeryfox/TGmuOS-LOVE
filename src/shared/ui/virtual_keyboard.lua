@@ -83,7 +83,34 @@ local KEY_H = 38
 local KEY_GAP = 4
 local PREVIEW_H = 30
 local ROW_H = KEY_H + KEY_GAP
-local KB_W = 12 * KEY_W + 11 * KEY_GAP + PAD * 2
+
+-- Calculate keyboard width dynamically based on widest row content
+local function calc_row_width(row)
+    local w = 0
+    for i, key in ipairs(row) do
+        w = w + (key.width or KEY_W)
+        if i > 1 then w = w + KEY_GAP end
+    end
+    return w
+end
+
+local KB_W = 0
+for _, row in ipairs(LAYOUT_EN) do
+    KB_W = math.max(KB_W, calc_row_width(row))
+end
+for _, row in ipairs(LAYOUT_RU) do
+    KB_W = math.max(KB_W, calc_row_width(row))
+end
+local ctrl_w = 0
+for i, c in ipairs(CONTROLS) do
+    ctrl_w = ctrl_w + c.width
+    if i > 1 then ctrl_w = ctrl_w + KEY_GAP end
+end
+KB_W = math.max(KB_W, ctrl_w)
+-- Don't shrink KB_W below ctrl_w; keyboard may overflow screen but keys stay within it
+    if KB_W < ui.width() - PAD * 2 then
+        KB_W = ui.width() - PAD * 2
+    end
 
 local function upper_key(key)
     return RU_UPPER[key] or string.upper(key)
@@ -161,11 +188,16 @@ function keyboard:cycle_mode()
         self:_clamp_cursor()
         return "nav"
     elseif self.mode == "emoji" then
+        self.mode = "stickers"
+        self:_sync_layout()
+        self:_clamp_cursor()
+        return "nav"
+    elseif self.mode == "stickers" then
         self.mode = "text"
         self.lang = "ru"
         self:_sync_layout()
         self:_clamp_cursor()
-        return "stickers"
+        return "nav"
     end
     self.lang = "ru"
     self.mode = "text"
@@ -304,19 +336,24 @@ function keyboard:draw(preview)
 
     local key_y = y + PREVIEW_H + PAD
     for row_idx, row in ipairs(self.layout) do
-        local row_w = #row * (KEY_W + KEY_GAP) - KEY_GAP
+        local row_w = 0
+        for i, key in ipairs(row) do
+            row_w = row_w + (key.width or KEY_W)
+            if i > 1 then row_w = row_w + KEY_GAP end
+        end
         local key_x = x + PAD + math.floor((KB_W - PAD * 2 - row_w) / 2)
         for col_idx, key in ipairs(row) do
+            local kwidth = key.width or KEY_W
             local selected = self.row == row_idx and self.col == col_idx
             local bg = selected and colors.accent_dark or colors.bg
             local outline = selected and colors.accent or colors.muted
-            ui.rect(key_x, key_y, KEY_W, KEY_H, bg, 4)
-            ui.outline(key_x, key_y, KEY_W, KEY_H, outline, 4)
+            ui.rect(key_x, key_y, kwidth, KEY_H, bg, 4)
+            ui.outline(key_x, key_y, kwidth, KEY_H, outline, 4)
             local label = key
             if self.shift ~= self.caps then label = upper_key(key) end
-            ui.text(label, key_x + math.floor((KEY_W - f:getWidth(label)) / 2),
+            ui.text(label, key_x + math.floor((kwidth - f:getWidth(label)) / 2),
                 key_y + math.floor((KEY_H - f:getHeight()) / 2), f, colors.text)
-            key_x = key_x + KEY_W + KEY_GAP
+            key_x = key_x + kwidth + KEY_GAP
         end
         key_y = key_y + ROW_H
     end
