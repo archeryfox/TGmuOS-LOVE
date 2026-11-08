@@ -352,6 +352,50 @@ local function start_account(key)
     return tg
 end
 
+-- GitHub update check/download
+local settings_update_version = "1.0.0"
+local settings_update_status = "idle" -- idle, checking, downloading, downloaded, error
+local settings_update_url = ""
+
+local function settings_download_update()
+    settings_update_status = "checking"
+    -- Try to get latest release info from GitHub
+    local repo = "anbernics/Telegram"
+    local api_url = "https://api.github.com/repos/" .. repo .. "/releases/latest"
+    
+    -- Try to fetch release info
+    local ok, result = pcall(function()
+        -- Use love's http or system curl
+        local cmd = "curl -sL " .. api_url .. " 2>/dev/null || echo '{}'"
+        local f = io.popen(cmd)
+        if f then
+            local content = f:read("*a")
+            f:close()
+            local data = json.decode(content)
+            if data and data.tag_name then
+                settings_update_version = data.tag_name
+                -- Find asset URL
+                for _, asset in ipairs(data.assets or {}) do
+                    if asset.name:match("%.zip$") or asset.name:match("%.love") then
+                        settings_update_url = asset.browser_download_url
+                        break
+                    end
+                end
+                if not settings_update_url and data.html_url then
+                    settings_update_url = data.html_url
+                end
+                settings_update_status = "ready"
+                return
+            end
+        end
+    end)
+    
+    if not ok or not settings_update_url or settings_update_url == "" then
+        settings_update_status = "error"
+        settings_update_version = "ошибка проверки"
+    end
+end
+
 function love.load()
     love.graphics.setBackgroundColor(ui.colors.bg)
     performance.load()
@@ -447,6 +491,9 @@ function love.update(dt)
                 local snap = vpn_out:pop()
                 if snap and snap.status then return snap.status.connected and "Включен" or "Выключен" end
                 return "Неизвестно"
+            end,
+            download_update = function()
+                settings_download_update(tg)
             end,
         })
                 tg.on_chat_opened = function(chat_id)

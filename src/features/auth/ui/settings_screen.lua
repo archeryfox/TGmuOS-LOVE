@@ -62,6 +62,7 @@ items[#items + 1] = {id = "abxy"}
         items[#items + 1] = {id = "account:" .. account.key, account = account}
     end
     items[#items + 1] = {id = "add_account"}
+    items[#items + 1] = {id = "update_github"}
     items[#items + 1] = {id = "logout"}
     return items
 end
@@ -283,6 +284,10 @@ function settings_screen:activate_item(item)
         if key ~= active_key and self.callbacks.switch_account then
             self.callbacks.switch_account(key)
         end
+    elseif item.id == "update_github" then
+        if self.callbacks.download_update then
+            self.callbacks.download_update()
+        end
     elseif item.id == "add_account" then
         if self.callbacks.add_account then self.callbacks.add_account() end
     elseif item.id == "logout" then
@@ -500,7 +505,11 @@ function settings_screen:mousepressed(x, y, button)
                     love.window.minimize()
                     self.tg.action_status = "Приложение свёрнуто"
                 end
-            elseif item.id == "abxy" then
+            elseif item.id == "update_github" then
+            ui.text("Скачать обновление с Github", 60, y + 7, f.normal, colors.text)
+            ui.text("Версия: " .. (settings_update_version or "—"), w - 180, y + 7, f.small, colors.muted)
+            self.update_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif item.id == "abxy" then
                 self:toggle_abxy()
             elseif item.id == "vpn" and not self.vpn_restarting and self.callbacks.restart_vpn then
                 self.vpn_restarting = true
