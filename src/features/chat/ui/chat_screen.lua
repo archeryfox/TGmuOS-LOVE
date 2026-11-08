@@ -619,6 +619,14 @@ end
 function messenger_screen:draw_media_player(w, h)
     local np = self.tg and self.tg.now_playing
     if not np then return end
+    -- Don't draw the bottom audio bar for video (fullscreen has its own player),
+    -- or while fullscreen media is open.
+    if self.fullscreen_media then return end
+    local kind = nil
+    if self.tg and self.tg.media_file_for_message then
+        kind = self.tg:media_file_for_message(np)
+    end
+    if kind == "video" or kind == "video_note" or kind == "animation" then return end
     local pos, dur, playing = self.tg:media_playback_state(np)
     local f = self.fonts
     local colors = ui.colors
