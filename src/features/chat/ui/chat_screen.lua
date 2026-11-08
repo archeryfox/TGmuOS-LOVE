@@ -440,6 +440,26 @@ function messenger_screen:update(dt)
         end
     end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
+    -- Refresh top status info every 5s
+    if (love.timer.getTime() - (self.status_info.last_refresh or 0)) > 5 then
+        self.status_info.last_refresh = love.timer.getTime()
+        self.status_info.time = os.date("%H:%M")
+        local ok, b = pcall(function()
+            local f = io.popen("cat /sys/class/power_supply/battery/capacity 2>/dev/null || cat /sys/class/power_supply/BAT0/capacity 2>/dev/null")
+            if f then local v = f:read("*l"); f:close(); return v end
+        end)
+        self.status_info.battery = (ok and b and b ~= "") and (b .. "%") or "?"
+        local ok2, ip = pcall(function()
+            local f = io.popen("hostname -I 2>/dev/null | awk '{print $1}'")
+            if f then local v = f:read("*l"); f:close(); return v end
+        end)
+        self.status_info.ip = (ok2 and ip and ip ~= "") and ip or "?"
+        local ok3, vpn = pcall(function()
+            local f = io.popen("pgrep -x sing-box >/dev/null 2>&1 && echo ON || echo OFF")
+            if f then local v = f:read("*l"); f:close(); return v end
+        end)
+        self.status_info.vpn = (ok3 and vpn) or "?"
+    end
 
     -- Smooth panning in fullscreen media
     if self.fullscreen_media then
@@ -522,6 +542,12 @@ function messenger_screen:draw()
     end
 
     self:draw_loading_indicator(f, colors, w, left_width, right_width)
+
+    -- Top status line
+    local si = self.status_info
+    local status_text = string.format("%s  🔋%s  📶%s  VPN:%s",
+        si.time or os.date("%H:%M"), si.battery or "?", si.ip or "?", si.vpn or "?")
+    ui.text(ui.fit(status_text, f.tiny, left_width - 16), 8, 4, f.tiny, colors.muted)
 
     self:draw_chat_list(left_width, h)
 
