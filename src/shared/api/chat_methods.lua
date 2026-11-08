@@ -147,8 +147,15 @@ return function(telegram)
 
     function telegram:rebuild_filter_chats()
         local lists = {}
+        local function is_discussion(chat)
+            local t = chat and chat.type
+            if not t or t["@type"] ~= "chatTypeSupergroup" or t.is_channel == true then return false end
+            local linked = tonumber(chat.linked_chat_id) or 0
+            return linked ~= 0
+        end
         local function add(chat)
             if type(chat.positions) ~= "table" then return end
+            if is_discussion(chat) then return end
             local seen = {}
             for _, position in ipairs(chat.positions) do
                 local list = position.list

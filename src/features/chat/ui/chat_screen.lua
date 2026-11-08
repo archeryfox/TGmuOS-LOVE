@@ -314,7 +314,10 @@ function messenger_screen:get_visible_chat_list()
         if t then
             local is_channel = (t["@type"] == "chatTypeChannel")
                 or (t["@type"] == "chatTypeSupergroup" and t.is_channel == true)
-            if not is_channel then
+            -- Skip discussion/comment groups linked to a channel (auto-added when viewing reposts)
+            local linked = tonumber(chat.linked_chat_id) or 0
+            local is_discussion = (t["@type"] == "chatTypeSupergroup" and t.is_channel ~= true and linked ~= 0)
+            if not is_channel and not is_discussion then
                 filtered[#filtered + 1] = chat
             end
         else
