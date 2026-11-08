@@ -863,10 +863,8 @@ function telegram:handle_file(file)
             end
             -- Text preview: read file when downloaded
             if self.text_preview and self.text_preview.loading then
-                local msg = self.text_preview.message
-                local doc = msg and msg.content and msg.content.document
-                local df = doc and doc.document
-                if df and tostring(df.id) == tostring(file_id) then
+                local tp_fid = self.text_preview.file_id
+                if tp_fid and tostring(tp_fid) == tostring(file_id) then
                     local lines = {}
                     local fh = io.open(file_local0.path, "r")
                     if fh then
