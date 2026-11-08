@@ -453,7 +453,18 @@ function love.load()
         auth = auth_screen.new(fonts, tg, {
             accounts = function() return account_store.accounts, account_store.active_key end,
             switch_account = function(key) pending_account_key = key end,
-            restart_account = function() pending_account_key = account_store.active_key end,
+            restart_account = function()
+                -- Abandon current auth attempt: clear the account db and restart fresh
+                local key = account_store.active_key
+                local account = find_account(key)
+                if account then account.authorized = false end
+                local db_dir = (key == "account_1") and (love.filesystem.getSaveDirectory() .. "/tdlib")
+                    or (love.filesystem.getSaveDirectory() .. "/accounts/" .. key .. "/tdlib")
+                -- remove db files
+                os.execute("rm -rf '" .. db_dir .. "'")
+                save_account_store()
+                pending_account_key = key
+            end,
         }),
         messenger = messenger_screen.new(fonts, tg),
         profile = profile_screen.new(fonts, tg),
