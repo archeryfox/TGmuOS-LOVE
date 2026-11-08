@@ -19,3 +19,4 @@ accounts.json
 data/
 *.log
 .obsidian/
+lib/love_11.5/

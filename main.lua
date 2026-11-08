@@ -387,40 +387,44 @@ local settings_update_url = ""
 
 local function settings_download_update()
     settings_update_status = "checking"
-    -- Try to get latest release info from GitHub
-    local repo = "anbernics/Telegram"
-    local api_url = "https://api.github.com/repos/" .. repo .. "/releases/latest"
-    
-    -- Try to fetch release info
-    local ok, result = pcall(function()
-        -- Use love's http or system curl
-        local cmd = "curl -sL " .. api_url .. " 2>/dev/null || echo '{}'"
-        local f = io.popen(cmd)
-        if f then
-            local content = f:read("*a")
-            f:close()
-            local data = json.decode(content)
-            if data and data.tag_name then
-                settings_update_version = data.tag_name
-                -- Find asset URL
-                for _, asset in ipairs(data.assets or {}) do
-                    if asset.name:match("%.zip$") or asset.name:match("%.love") then
-                        settings_update_url = asset.browser_download_url
-                        break
-                    end
+    settings_update_restart_pending = false
+    -- Try git pull in the app directory first
+    local app_dir = "/mnt/mmc/MUOS/application/Telegram"
+    local cmd = "cd " .. app_dir .. " && git pull 2>&1"
+    local f = io.popen(cmd)
+    local output = ""
+    if f then
+        output = f:read("*a") or ""
+        f:close()
+    end
+    if output:find("Already up to date") or output:find("Updating") or output:find("Fast-forward") then
+        settings_update_status = "ready"
+        settings_update_version = "обновлено"
+        settings_update_restart_pending = true
+        if tg then tg.update_restart_pending = true end
+    else
+        -- Fallback: try GitHub release download
+        local repo = "anbernics/Telegram"
+        local api_url = "https://api.github.com/repos/" .. repo .. "/releases/latest"
+        local ok2, result = pcall(function()
+            local c = "curl -sL " .. api_url .. " 2>/dev/null || echo '{}'"
+            local fh = io.popen(c)
+            if fh then
+                local content = fh:read("*a")
+                fh:close()
+                local data = json.decode(content)
+                if data and data.tag_name then
+                    settings_update_version = data.tag_name
+                    settings_update_status = "ready"
+                    settings_update_restart_pending = true
+                    if tg then tg.update_restart_pending = true end
                 end
-                if not settings_update_url and data.html_url then
-                    settings_update_url = data.html_url
-                end
-                settings_update_status = "ready"
-                return
             end
+        end)
+        if not settings_update_restart_pending then
+            settings_update_status = "error"
+            settings_update_version = "ошибка проверки"
         end
-    end)
-    
-    if not ok or not settings_update_url or settings_update_url == "" then
-        settings_update_status = "error"
-        settings_update_version = "ошибка проверки"
     end
 end
 

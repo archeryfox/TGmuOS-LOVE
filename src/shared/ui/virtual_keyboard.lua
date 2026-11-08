@@ -78,12 +78,12 @@ local CONTROLS = {
 }
 
 local PAD = 8
-local KEY_W = 50
+local KEY_W = 44
 local KEY_H = 38
 local KEY_GAP = 4
 local PREVIEW_H = 30
 local ROW_H = KEY_H + KEY_GAP
-local KB_W = 11 * KEY_W + 10 * KEY_GAP + PAD * 2
+local KB_W = 12 * KEY_W + 11 * KEY_GAP + PAD * 2
 
 local function upper_key(key)
     return RU_UPPER[key] or string.upper(key)

@@ -615,6 +615,17 @@ self.fullscreen_zoom = 1.2
                 return
             end
             if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
+            if key == "y" then
+                self.tg.sticker_set_viewer = nil
+                self.sticker_fullscreen_image = nil
+                self.sticker_fullscreen_sticker = nil
+                if self.keyboard then
+                    self.keyboard.visible = true
+                    self.keyboard.mode = "text"
+                    self.keyboard.lang = "ru"
+                    self.keyboard:_sync_layout()
+                end
+            end
             return
         end
         if (key == "p" or key == "m") and not self.tg.current_chat_id then

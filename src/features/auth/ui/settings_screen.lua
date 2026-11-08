@@ -122,6 +122,7 @@ local is_abxy = item.id == "abxy"
         local is_exit = item.id == "exit_app"
         local is_add = item.id == "add_account"
         local is_logout = item.id == "logout"
+        local is_update_github = item.id == "update_github"
         local is_profile = item.id == "profile"
         local is_theme = item.id == "theme"
         local is_wallpaper = item.id == "wallpaper"
@@ -248,6 +249,10 @@ local is_abxy = item.id == "abxy"
         elseif is_add then
             ui.text("+ Добавить аккаунт", 54, y + 5, f.small, colors.text)
             self.add_button = {x = 40, y = y, w = w - 80, h = 30}
+        elseif is_update_github then
+            ui.text("Скачать обнову с GitHub", 54, y + 7, f.small, colors.text)
+            ui.text("Enter — git pull + перезапуск", w - 200, y + 7, f.tiny, colors.muted)
+            self.update_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_logout then
             local logout_label = self.logout_confirm and "Подтвердить выход из аккаунта" or "Выйти из аккаунта"
             ui.text(logout_label, 54, y + 7, f.small, colors.text)
@@ -277,6 +282,8 @@ local is_abxy = item.id == "abxy"
         self.vpn_spinner = (self.vpn_spinner + 0.1) % (math.pi * 2)
     end
     self.items_cache = items
+    self:draw_update_dialog(w, h)
+
 end
 
 function settings_screen:clamp_scroll(total_items, max_visible)
@@ -363,7 +370,28 @@ function settings_screen:activate_item(item)
     end
 end
 
+function settings_screen:draw_update_dialog(w, h)
+    if not (self.tg and self.tg.update_restart_pending) then return end
+    local f = self.fonts
+    local colors = ui.colors
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    local pw, ph = 420, 140
+    local px, py = (w - pw) / 2, (h - ph) / 2
+    ui.rect(px, py, pw, ph, colors.panel, 8)
+    ui.outline(px, py, pw, ph, colors.accent, 8)
+    ui.text("Обновление загружено", px + 20, py + 16, f.subtitle, colors.text)
+    ui.text("Перезапустите приложение для применения.", px + 20, py + 52, f.small, colors.muted)
+    ui.text("B / Esc — закрыть", px + 20, py + ph - 24, f.tiny, colors.muted)
+end
+
 function settings_screen:keypressed(key)
+    if self.tg and self.tg.update_restart_pending then
+        if key == "escape" or key == "b" then
+            self.tg.update_restart_pending = false
+        end
+        return
+    end
     if key == "escape" then return "back" end
     local items = self:items()
     local selected = items[self.selected_item]
