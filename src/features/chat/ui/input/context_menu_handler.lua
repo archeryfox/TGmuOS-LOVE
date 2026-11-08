@@ -69,9 +69,9 @@ function context_menu_handler.activate_context_item(ms, cm, item)
         ms:open_file_browser("/mnt/mmc/MUOS/screenshot/")
     elseif item.action == "preview_text" then
         if cm.message then
-            ms.text_preview = {loading = true, lines = {}, scroll = 0, message = cm.message, file_id = file and file.id}
             local doc = cm.message.content and cm.message.content.document
             local file = doc and doc.document
+            ms.text_preview = {loading = true, lines = {}, scroll = 0, message = cm.message, file_id = file and file.id}
             if file and file.id then
                 -- trigger download
                 if not (file["local"] and file["local"].is_downloading_completed) then
