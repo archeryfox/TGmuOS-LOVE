@@ -105,14 +105,11 @@ end
 
 function tdlib_auth.update_qr_polling(tdlib, dt)
     if tdlib.auth_state ~= "authorizationStateWaitPhoneNumber" then return end
-    local has_proxy = tdlib.options and tdlib.options.proxy
-    if not has_proxy or tdlib.proxy_ready then
-        if tdlib.qr_request_pending and love.timer.getTime() - tdlib.qr_requested_at >= 30 then
-            tdlib.qr_request_pending = false
-        end
-        if not tdlib.qr_request_pending and love.timer.getTime() - tdlib.qr_requested_at >= 3 then
-            tdlib:request_qr()
-        end
+    if tdlib.qr_request_pending and love.timer.getTime() - tdlib.qr_requested_at >= 30 then
+        tdlib.qr_request_pending = false
+    end
+    if not tdlib.qr_request_pending and love.timer.getTime() - tdlib.qr_requested_at >= 1 then
+        tdlib:request_qr()
     end
 end
 

@@ -930,6 +930,33 @@ self.fullscreen_zoom = 1
     end
 
     function messenger_screen:wheelmoved(x, y)
+        if self.fullscreen_media then
+            local fm = self.fullscreen_media
+            if fm.kind ~= "video" then
+                local zoom = self.fullscreen_zoom or 1
+                if y > 0 then
+                    zoom = math.min(6, zoom + 0.25)
+                else
+                    zoom = math.max(1, zoom - 0.25)
+                end
+                self.fullscreen_zoom = zoom
+                -- Recenter zoom toward mouse cursor
+                local mx, my = love.mouse.getPosition()
+                local w, h = ui.width(), ui.height()
+                local img = self.tg:current_media_image()
+                if img then
+                    local iw, ih = img:getWidth(), img:getHeight()
+                    local old_zoom = self.fullscreen_zoom or 1
+                    local scale_factor = zoom / old_zoom
+                    -- Adjust pan to zoom toward cursor position
+                    local dx = (mx - w/2)
+                    local dy = (my - h/2)
+                    self.fullscreen_pan_x = (self.fullscreen_pan_x or 0) + dx * (1 - 1/scale_factor) * 0.5
+                    self.fullscreen_pan_y = (self.fullscreen_pan_y or 0) + dy * (1 - 1/scale_factor) * 0.5
+                end
+                return
+            end
+        end
         if self.tg.sticker_set_viewer then
             local pack = self.tg.sticker_set_viewer
             if not pack.loading and not pack.error then
@@ -946,6 +973,35 @@ self.fullscreen_zoom = 1
             end
             return
         end
+    function messenger_screen:mousemoved(x, y, dx, dy)
+        if self.fullscreen_media and self.fullscreen_drag_start then
+            local fm = self.fullscreen_media
+            if fm.kind ~= "video" then
+                local img = self.tg:current_media_image()
+                if img then
+                    local iw, ih = img:getWidth(), img:getHeight()
+                    local w, h = ui.width(), ui.height()
+                    local scale = self.fullscreen_zoom or 1
+                    local draw_w = iw * scale
+                    local draw_h = ih * scale
+                    if draw_w > w or draw_h > h then
+                        self.fullscreen_pan_x = (self.fullscreen_pan_x or 0) + dx
+                        self.fullscreen_pan_y = (self.fullscreen_pan_y or 0) + dy
+                        if draw_w > w then
+                            self.fullscreen_pan_x = math.max(w - draw_w, math.min(self.fullscreen_pan_x, 0))
+                        else
+                            self.fullscreen_pan_x = 0
+                        end
+                        if draw_h > h then
+                            self.fullscreen_pan_y = math.max(h - draw_h, math.min(self.fullscreen_pan_y, 0))
+                        else
+                            self.fullscreen_pan_y = 0
+                        end
+                    end
+                end
+            end
+        end
+
         local left_width = math.floor(ui.width() * 0.30)
         local mx = love.mouse.getX()
         if mx < left_width then
@@ -958,6 +1014,22 @@ self.fullscreen_zoom = 1
     end
 
     function messenger_screen:mousepressed(x, y, button)
+        if self.fullscreen_media then
+            local fm = self.fullscreen_media
+            if fm.kind ~= "video" then
+                if button == 1 then
+                    self.fullscreen_drag_start = {x = x, y = y, pan_x = self.fullscreen_pan_x or 0, pan_y = self.fullscreen_pan_y or 0}
+                    return
+                elseif button == 2 then
+                    -- Right click: reset zoom
+                    self.fullscreen_zoom = 1
+                    self.fullscreen_pan_x = 0
+                    self.fullscreen_pan_y = 0
+                    self.fullscreen_drag_start = nil
+                    return
+                end
+            end
+        end
         if self.tg.sticker_set_viewer then
             if button == 1 then
                 local width, height = ui.width(), ui.height()
