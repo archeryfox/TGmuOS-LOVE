@@ -75,7 +75,7 @@ function context_menu_handler.activate_context_item(ms, cm, item)
             if file and file.id then
                 -- trigger download
                 if not (file["local"] and file["local"].is_downloading_completed) then
-                    tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "text_preview:" .. tostring(file.id))
+                    ms.tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "text_preview:" .. tostring(file.id))
                 else
                     -- already downloaded; read immediately
                     local path = file["local"].path
