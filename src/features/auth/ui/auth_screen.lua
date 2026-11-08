@@ -283,6 +283,7 @@ function auth_screen:draw_password(w, h)
     if self.model:get_password_hint() ~= "" then
         ui.printf(self.model:get_password_hint(), 40, 84, w - 80, "center", f.small, colors.muted)
     end
+    ui.printf("B / Esc — вернуться к предыдущему этапу (перезапуск входа)", 40, h - 28, w - 80, "center", f.tiny, colors.muted)
 
     local box_w = math.min(560, w - 80)
     local box_h = 40
@@ -388,8 +389,10 @@ function auth_screen:keypressed(key)
             self.password = ui.remove_last_utf8(self.password)
         elseif key == "return" or key == "kpenter" then
             self:activate_kb()
-        elseif key == "escape" then
-            love.event.quit()
+        elseif key == "escape" or key == "b" then
+            if self.callbacks and self.callbacks.restart_account then
+                self.callbacks.restart_account()
+            end
         end
         return
     end
