@@ -1075,12 +1075,7 @@ function messenger_screen:context_menu_items(message)
         items[#items + 1] = {label = "Загрузить стикер", action = "download_sticker"}
     end
     if content_type == "messageDocument" then
-        local doc = message.content.document
-        local mime = doc and (doc.mime_type or "")
-        local fname = doc and (doc.file_name or "")
-        if mime:match("^text/") or fname:match("%.txt$") or fname:match("%.log$") or fname:match("%.md$") or fname:match("%.json$") or fname:match("%.lua$") then
-            items[#items + 1] = {label = "Просмотреть текст", action = "preview_text"}
-        end
+        items[#items + 1] = {label = "Просмотреть текст", action = "preview_text"}
     end
 
     -- "Скачать в hi-res" — для фото загружает最高 разрешение
