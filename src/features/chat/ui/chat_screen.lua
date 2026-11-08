@@ -959,13 +959,16 @@ function messenger_screen:draw_fullscreen_media(w, h)
     love.graphics.setColor(0, 0, 0, 0.88)
     love.graphics.rectangle("fill", 0, 0, w, h)
     -- Animate fullscreen zoom
-    if self.fullscreen_zoom_target and self.fullscreen_zoom < self.fullscreen_zoom_target then
+    if self.fullscreen_zoom_target then
         local elapsed = love.timer.getTime() - (self.fullscreen_zoom_start or love.timer.getTime())
         local t = math.min(1, elapsed / 0.25)
-        self.fullscreen_zoom = 0.5 + 0.5 * t
+        local zoom_start = self.fullscreen_zoom_start_val or self.fullscreen_zoom
+        self.fullscreen_zoom = zoom_start + (self.fullscreen_zoom_target - zoom_start) * t
         if t >= 1 then
             self.fullscreen_zoom = self.fullscreen_zoom_target
             self.fullscreen_zoom_target = nil
+            self.fullscreen_zoom_start = nil
+            self.fullscreen_zoom_start_val = nil
         end
     end
 
@@ -990,12 +993,15 @@ function messenger_screen:draw_fullscreen_media(w, h)
             if draw_w > w then
                 draw_x = math.max(w - draw_w, math.min(draw_x, 0))
             else
-                draw_x = (w - draw_w) / 2
+                -- Allow panning even when image fits in screen
+                local pan_x_max = (w - draw_w) / 2
+                draw_x = math.max(-pan_x_max, math.min(draw_x, pan_x_max))
             end
             if draw_h > h then
                 draw_y = math.max(h - draw_h, math.min(draw_y, 0))
             else
-                draw_y = (h - draw_h) / 2 - panel_h / 2
+                local pan_y_max = (h - draw_h) / 2
+                draw_y = math.max(-pan_y_max, math.min(draw_y, pan_y_max)) - panel_h / 2
             end
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.draw(image, draw_x, draw_y, 0, scale, scale)

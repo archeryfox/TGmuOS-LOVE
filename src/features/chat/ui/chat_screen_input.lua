@@ -259,7 +259,10 @@ return function(messenger_screen, layout)
         local kind = content["@type"]
         if kind == "messagePhoto" then
             self.fullscreen_media = {message = message, kind = "photo"}
-            self.fullscreen_zoom = 1.2
+            self.fullscreen_zoom = 0.5
+            self.fullscreen_zoom_target = 1.0
+            self.fullscreen_zoom_start = love.timer.getTime()
+            self.fullscreen_zoom_start_val = 0.5
         self.fullscreen_drag_start = nil
             self.fullscreen_pan_x = 0
             self.fullscreen_pan_y = 0
@@ -268,7 +271,10 @@ return function(messenger_screen, layout)
             if self.tg.ensure_photo_hires then self.tg:ensure_photo_hires(message) end
         elseif kind == "messageVideo" or kind == "messageVideoNote" then
             self.fullscreen_media = {message = message, kind = "video", video_note = kind == "messageVideoNote"}
-            self.fullscreen_zoom = 1.2
+            self.fullscreen_zoom = 0.5
+            self.fullscreen_zoom_target = 1.0
+            self.fullscreen_zoom_start = love.timer.getTime()
+            self.fullscreen_zoom_start_val = 0.5
         self.fullscreen_drag_start = nil
             self.tg:request_media_playback(message)
         elseif kind == "messageAnimation" or kind == "messageSticker" then
@@ -723,7 +729,11 @@ self.fullscreen_zoom = 1.2
                     if self.r2_pan_mode then
                         self.fullscreen_pan_target_y = (self.fullscreen_pan_target_y or self.fullscreen_pan_y or 0) + 20
                     else
-                        self.fullscreen_zoom = math.min(6, (self.fullscreen_zoom or 1) + 0.25)
+                        local cur = self.fullscreen_zoom or 1
+                        local target = math.min(6, cur + 0.5)
+                        self.fullscreen_zoom_target = target
+                        self.fullscreen_zoom_start_val = cur
+                        self.fullscreen_zoom_start = love.timer.getTime()
                     end
                 end
             elseif key == "down" then
@@ -731,7 +741,11 @@ self.fullscreen_zoom = 1.2
                     if self.r2_pan_mode then
                         self.fullscreen_pan_target_y = (self.fullscreen_pan_target_y or self.fullscreen_pan_y or 0) - 20
                     else
-                        self.fullscreen_zoom = math.max(1, (self.fullscreen_zoom or 1) - 0.25)
+                        local cur = self.fullscreen_zoom or 1
+                        local target = math.max(0.5, cur - 0.5)
+                        self.fullscreen_zoom_target = target
+                        self.fullscreen_zoom_start_val = cur
+                        self.fullscreen_zoom_start = love.timer.getTime()
                     end
                 end
             elseif key == "left" then
