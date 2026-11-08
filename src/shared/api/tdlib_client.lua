@@ -477,9 +477,11 @@ function telegram:handle(object)
     elseif kind == "updateChatPosition" then
         self:handle_chat_position(object)
     elseif kind == "updateChatFilters" then
-        self.chat_filters = object.chat_filters or {}
+        self.chat_filters = object.chat_filters or object.filters or self.chat_filters or {}
+        log_to_file(self, "CHAT_FILTERS update: " .. tostring(#(self.chat_filters or {})))
     elseif kind == "chatFilters" then
-        self.chat_filters = object.chat_filters or {}
+        self.chat_filters = object.chat_filters or object.filters or self.chat_filters or {}
+        log_to_file(self, "CHAT_FILTERS loaded: " .. tostring(#(self.chat_filters or {})))
     elseif kind == "updateChatNotificationSettings" then
         local chat = self.chats_by_id[object.chat_id] or self.archive_chats_by_id[object.chat_id]
         if chat then chat.notification_settings = object.notification_settings end
