@@ -564,6 +564,10 @@ function messenger_screen:draw()
     self:draw_text_preview(w, h)
     self:draw_file_browser(w, h)
     self:draw_media_player(w, h)
+    -- R2 pan mode indicator in fullscreen
+    if self.fullscreen_media and self.r2_pan_mode then
+        ui.text("Панорама: ВКЛ (R2 — выкл)", 12, 70, self.fonts.tiny, ui.colors.accent)
+    end
 end
 
 function messenger_screen:draw_file_browser(w, h)
@@ -892,7 +896,11 @@ end
 
 function messenger_screen:draw_fullscreen_media(w, h)
     local fullscreen = self.fullscreen_media
-    if not fullscreen then return end
+    if not fullscreen then
+        self.fullscreen_hint_time = nil
+        return
+    end
+    if not self.fullscreen_hint_time then self.fullscreen_hint_time = love.timer.getTime() end
     local image
     local media_index = fullscreen.media_index or 1
     if fullscreen.kind == "video" then
@@ -1009,8 +1017,10 @@ function messenger_screen:draw_fullscreen_media(w, h)
         self.player_controls = nil
     end
     if fullscreen.kind ~= "video" and fullscreen.kind ~= "video_note" then
-        local hint = string.format("↑/↓ — масштаб %d%%   ←/→ — медиа   R2+↑↓←→ — панорамирование   A — загрузить в HiRes   B — назад", math.floor((self.fullscreen_zoom or 1) * 100))
-        ui.text(hint, 24, h - 26, self.fonts.tiny, ui.colors.muted)
+        if love.timer.getTime() - (self.fullscreen_hint_time or 0) < 8 then
+            local hint = string.format("↑/↓ — масштаб %d%%   ←/→ — медиа   R2+↑↓←→ — панорамирование   A — загрузить в HiRes   B — назад", math.floor((self.fullscreen_zoom or 1) * 100))
+            ui.text(hint, 24, h - 26, self.fonts.tiny, ui.colors.muted)
+        end
     else
         ui.text("←/→ — медиа   L1/R1 — ±5с   B — назад",
             24, h - 26, self.fonts.tiny, ui.colors.muted)
@@ -1716,6 +1726,10 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
     if image then
         local media_x, media_y = x + padding, text_y
         local content_kind = message.content and message.content["@type"]
+        -- Clip media to conversation area so it never overflows onto title/profile layers
+        if self.conv_area_x then
+            love.graphics.setScissor(self.conv_area_x, self.conv_area_y, self.conv_area_w, self.conv_area_h)
+        end
         if content_kind == "messageVideoNote" then
             draw_circle_image(image, media_x, media_y, image_width)
             -- Duration label in corner
@@ -1732,6 +1746,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
             local scale = image_width / image:getWidth()
             love.graphics.draw(image, media_x, media_y, 0, scale, scale)
         end
+        if self.conv_area_x then love.graphics.setScissor(self.conv_area_x, self.conv_area_y, self.conv_area_w, self.conv_area_h) end
         if content_kind == "messagePhoto" or content_kind == "messageVideo" or content_kind == "messageVideoNote" then
             hit.media = true
             hit.media_kind = (content_kind == "messagePhoto") and "photo" or "video"

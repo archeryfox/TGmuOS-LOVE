@@ -11,6 +11,7 @@ return function(messenger_screen, layout)
 
     -- Gamepad trigger state tracking
     messenger_screen.r2_pressed = false
+    messenger_screen.r2_pan_mode = false
     messenger_screen.l2_pressed = false
 
     function messenger_screen:send()
@@ -248,7 +249,7 @@ return function(messenger_screen, layout)
         local kind = content["@type"]
         if kind == "messagePhoto" then
             self.fullscreen_media = {message = message, kind = "photo"}
-            self.fullscreen_zoom = 1
+            self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
             self.fullscreen_pan_x = 0
             self.fullscreen_pan_y = 0
@@ -257,7 +258,7 @@ return function(messenger_screen, layout)
             if self.tg.ensure_photo_hires then self.tg:ensure_photo_hires(message) end
         elseif kind == "messageVideo" or kind == "messageVideoNote" then
             self.fullscreen_media = {message = message, kind = "video", video_note = kind == "messageVideoNote"}
-            self.fullscreen_zoom = 1
+            self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
             self.tg:request_media_playback(message)
         elseif kind == "messageAnimation" or kind == "messageSticker" then
@@ -336,7 +337,7 @@ return function(messenger_screen, layout)
             self.fullscreen_pan_target_x = nil
             self.fullscreen_pan_target_y = nil
         end
-self.fullscreen_zoom = 1
+self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
         self.fullscreen_pan_x = 0
         self.fullscreen_pan_y = 0
@@ -393,7 +394,7 @@ self.fullscreen_zoom = 1
                 end
             end
             self.fullscreen_media = {message = msg, video_note = (kind == "video_note"), kind = kind, media_index = media_index}
-            self.fullscreen_zoom = 1
+            self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
             self.fullscreen_pan_x = 0
             self.fullscreen_pan_y = 0
@@ -678,12 +679,14 @@ self.fullscreen_zoom = 1
             if key == "escape" then
                 self.fullscreen_media = nil
                 self.player_controls = nil
-                self.fullscreen_zoom = 1
+                self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
                 self.fullscreen_pan_x = 0
                 self.fullscreen_pan_y = 0
                 self.fullscreen_pan_target_x = nil
                 self.fullscreen_pan_target_y = nil
+                self.fullscreen_hint_time = nil
+                self.r2_pan_mode = false
             elseif key == "return" or key == "kpenter" then
                 if fm.kind == "video" then
                     local _, _, playing = self.tg:media_playback_state(fm.message)
@@ -695,7 +698,7 @@ self.fullscreen_zoom = 1
                 end
             elseif key == "up" then
                 if fm.kind ~= "video" then
-                    if self.r2_pressed then
+                    if self.r2_pan_mode then
                         self.fullscreen_pan_target_y = (self.fullscreen_pan_target_y or self.fullscreen_pan_y or 0) + 20
                     else
                         self.fullscreen_zoom = math.min(6, (self.fullscreen_zoom or 1) + 0.25)
@@ -703,14 +706,14 @@ self.fullscreen_zoom = 1
                 end
             elseif key == "down" then
                 if fm.kind ~= "video" then
-                    if self.r2_pressed then
+                    if self.r2_pan_mode then
                         self.fullscreen_pan_target_y = (self.fullscreen_pan_target_y or self.fullscreen_pan_y or 0) - 20
                     else
                         self.fullscreen_zoom = math.max(1, (self.fullscreen_zoom or 1) - 0.25)
                     end
                 end
             elseif key == "left" then
-                if fm.kind ~= "video" and self.r2_pressed then
+                if fm.kind ~= "video" and self.r2_pan_mode then
                     self.fullscreen_pan_target_x = (self.fullscreen_pan_target_x or self.fullscreen_pan_x or 0) + 20
                 else
                     self:switch_fullscreen_media(-1)
@@ -719,7 +722,7 @@ self.fullscreen_zoom = 1
                 if fm.kind ~= "video" and fm.kind ~= "video_note" then
                 end
             elseif key == "right" then
-                if fm.kind ~= "video" and self.r2_pressed then
+                if fm.kind ~= "video" and self.r2_pan_mode then
                     self.fullscreen_pan_target_x = (self.fullscreen_pan_target_x or self.fullscreen_pan_x or 0) - 20
                 else
                     self:switch_fullscreen_media(1)
@@ -731,7 +734,8 @@ self.fullscreen_zoom = 1
                 local position, duration = self.tg:media_playback_state(fm.message)
                 self.tg:seek_media_playback(fm.message, math.min(duration or 0, (position or 0) + 10))
             elseif key == "r2" then
-                self.r2_pressed = true
+                self.r2_pan_mode = not self.r2_pan_mode
+                return
             elseif key == "l2" then
                 self.l2_pressed = true
             end
@@ -1063,7 +1067,7 @@ self.fullscreen_zoom = 1
                     return
                 elseif button == 2 then
                     -- Right click: reset zoom
-                    self.fullscreen_zoom = 1
+                    self.fullscreen_zoom = 1.2
                     self.fullscreen_pan_x = 0
                     self.fullscreen_pan_y = 0
                     self.fullscreen_drag_start = nil
@@ -1320,7 +1324,7 @@ self.fullscreen_zoom = 1
                             kind = media_hit.media_kind,
                             video_note = content["@type"] == "messageVideoNote",
                         }
-                        self.fullscreen_zoom = 1
+                        self.fullscreen_zoom = 1.2
         self.fullscreen_drag_start = nil
                         if is_video then self.tg:request_media_playback(media_hit.message) end
                     end
