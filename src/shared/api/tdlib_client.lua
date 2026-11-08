@@ -627,6 +627,8 @@ function telegram:handle(object)
         local extra = tostring(object["@extra"] or "")
         if extra == "installed_sticker_sets" then
             self.installed_sticker_sets = object.sets or object.sticker_sets or {}
+            self.installed_sticker_sets_just_loaded = true
+            self.installed_sticker_sets_just_loaded = true
             -- Try to find the sticker set by ID and open it by name
             local target_id = tostring(self._pending_sticker_set_id or "")
             for _, set in ipairs(self.installed_sticker_sets) do

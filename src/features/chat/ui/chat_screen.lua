@@ -422,6 +422,19 @@ function messenger_screen:update(dt)
             self.text_preview.lines = lines
         end
     end
+    if self.tg.installed_sticker_sets_just_loaded and self.context_menu then
+        self.tg.installed_sticker_sets_just_loaded = false
+        local has_sticker_item = false
+        for _, it in ipairs(self.context_menu.items or {}) do
+            if it.action == "open_sticker_pack_by_name" or it.label == "Загрузка стикерпаков…" or it.label == "Нет установленных стикерпаков" then
+                has_sticker_item = true
+                break
+            end
+        end
+        if has_sticker_item then
+            self:open_sticker_pack_list()
+        end
+    end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
 
     -- Hold-to-scroll: while nav keys are held, accumulate scroll deltas
@@ -842,7 +855,17 @@ function messenger_screen:draw_fullscreen_media(w, h)
             local pan_y = self.fullscreen_pan_y or 0
             local draw_x = (w - draw_w) / 2 + pan_x
             local draw_y = (h - draw_h) / 2 + pan_y - panel_h / 2
-            draw_y = math.max(12, math.min(draw_y, available_h - draw_h + 12))
+            -- Clamp draw area to allow panning within image bounds
+            if draw_w > w then
+                draw_x = math.max(w - draw_w, math.min(draw_x, 0))
+            else
+                draw_x = (w - draw_w) / 2
+            end
+            if draw_h > h then
+                draw_y = math.max(h - draw_h, math.min(draw_y, 0))
+            else
+                draw_y = (h - draw_h) / 2 - panel_h / 2
+            end
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.draw(image, draw_x, draw_y, 0, scale, scale)
         end
@@ -868,7 +891,7 @@ function messenger_screen:draw_fullscreen_media(w, h)
         end
 
         local track_x = panel_x + 44
-        local track_w = math.max(40, panel_w - 164)
+        local track_w = panel_w - 100
         local track_y = panel_y + 20
         local progress = duration > 0 and math.min(1, math.max(0, position / duration)) or 0
         ui.rect(track_x, track_y, track_w, 5, {0.35, 0.37, 0.4}, 2)

@@ -475,6 +475,10 @@ current = screens.auth
         current = screens.auth
         current:enter()
     end
+    if tg.ready and tg.installed_sticker_sets == nil then
+        tg.installed_sticker_sets = {}
+        tg:load_installed_sticker_sets()
+    end
 
     if settings_open then
         current = screens.settings

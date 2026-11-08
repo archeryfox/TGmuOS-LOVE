@@ -133,12 +133,17 @@ return function(messenger_screen, layout)
             self.tg:load_installed_sticker_sets()
         end
         local items = {}
-        for _, set in ipairs(self.tg.installed_sticker_sets or {}) do
-            local title = set.title or set.name or "Стикерпак"
-            items[#items + 1] = {label = title, action = "open_sticker_pack_by_name", name = set.name}
-        end
-        if #items == 0 then
-            items[#items + 1] = {label = "Нет установленных стикерпаков", action = nil}
+        if self.tg.installed_sticker_sets == nil then
+            self.tg:load_installed_sticker_sets()
+            items[#items + 1] = {label = "Загрузка стикерпаков…", action = nil}
+        else
+            for _, set in ipairs(self.tg.installed_sticker_sets or {}) do
+                local title = set.title or set.name or "Стикерпак"
+                items[#items + 1] = {label = title, action = "open_sticker_pack_by_name", name = set.name}
+            end
+            if #items == 0 then
+                items[#items + 1] = {label = "Нет установленных стикерпаков", action = nil}
+            end
         end
         items[#items + 1] = {label = "Открыть по ссылке", action = "open_sticker_pack_by_link", name = ""}
         self.context_menu = {
