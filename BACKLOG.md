@@ -6,8 +6,8 @@
 - [x] WebM-стикеры в диалогах
 - [x] UI: экран Управление
 - [x] Проверить воспроизведение webm-стикеров в реальных диалогах
-- [ ] Кэш-инвалидация/лимит для `anim_animation_*`
-- [ ] Аудит `convert_to_gif` для webm
+- [x] Кэш-инвалидация/лимит для `anim_animation_*`
+- [x] Аудит `convert_to_gif` для webm
 
 ## Оптимизация загрузки чатов (2026-11-07)
 - [x] HISTORY_PAGE_SIZE 10→50
@@ -70,7 +70,7 @@
 7. [x] Стикеры не отправлялись — исправлено (pending_sticker_send при загрузке файла)
 8. [x] Стикерпаки не грузятся (Request aborted / proxy) — исправлено через getInstalledStickerSets + searchStickerSet fallback
 9. [x] Навигация по media album — только первый медиа
-10. [ ] Нет прогресса загрузки медиа
+10. [x] Нет прогресса загрузки медиа
 11. [ ] Emoji rendering — missing NotoEmoji font
 12. [x] Выход из поиска по B — done
 

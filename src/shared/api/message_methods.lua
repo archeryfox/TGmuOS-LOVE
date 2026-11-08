@@ -292,8 +292,6 @@ return function(telegram)
                             return sz or 0
                         end)(),
                     },
-                    width = 0,
-                    height = 0,
                 },
                 caption = {["@type"] = "formattedText", text = ""},
                 width = 0,
