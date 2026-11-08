@@ -289,9 +289,9 @@ function auth_screen:draw_password(w, h)
         ui.printf(self.model:get_password_hint(), 40, 84, w - 80, "center", f.small, colors.muted)
     end
     -- Back button
-    local btn_w, btn_h = 200, 34
-    local bx = math.floor((w - btn_w) / 2)
-    local by = 150
+    local btn_w, btn_h = 120, 30
+    local bx = w - btn_w - 12
+    local by = 12
     ui.rect(bx, by, btn_w, btn_h, colors.panel_alt, 6)
     ui.outline(bx, by, btn_w, btn_h, colors.accent, 6)
     local lbl = "Назад"
