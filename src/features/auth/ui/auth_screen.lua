@@ -15,10 +15,11 @@ local function key_chars(list)
     return out
 end
 
-function auth_screen.new(fonts, tg)
+function auth_screen.new(fonts, tg, callbacks)
     local self = {}
     self.fonts = fonts
     self.tg = tg
+    self.callbacks = callbacks or {}
     self.model = auth_model.new(tg)
     self.qr_link = nil
     self.qr_image = nil
@@ -30,6 +31,8 @@ function auth_screen.new(fonts, tg)
     self.items = {"Авторизация", "Настройки VPN", "Очистить все данные", "Закрыть все процессы ТГ", "Выйти из приложения"}
     self.kb_row = 1
     self.kb_col = 1
+    self.account_selected = 1
+    self.account_bounds = {}
     self.kb_layer = "abc"
     self.kb_shift = false
     setmetatable(self, {__index = auth_screen})
@@ -40,6 +43,7 @@ end
 function auth_screen:enter()
     self.password = ""
     self.selected_item = 1
+    self.account_selected = 1
     self.was_password_mode = false
     self:reset_keyboard()
 end
@@ -96,6 +100,43 @@ function auth_screen:draw()
     end
 
     ui.printf(self.model:get_status_text(), 40, status_y, w - 80, "center", f.normal, colors.text)
+
+    -- Saved accounts (return to logged-in account)
+    local accounts = (self.callbacks and self.callbacks.accounts and self.callbacks.accounts()) or ({})
+    local active_key = nil
+    local acc_list = accounts[1] or accounts
+    -- accounts callback returns (list, active_key)
+    local accs, active = {}, nil
+    if self.callbacks and self.callbacks.accounts then
+        local l, a = self.callbacks.accounts()
+        accs = l or {}
+        active = a
+    end
+    local saved = {}
+    for _, a in ipairs(accs) do
+        if a.authorized then saved[#saved+1] = a end
+    end
+    local acc_y = status_y + 10
+    if #saved > 0 then
+        ui.text("Сохранённые аккаунты:", 40, acc_y, f.small, colors.accent)
+        acc_y = acc_y + 22
+        self.account_bounds = {}
+        for i, acc in ipairs(saved) do
+            local x = math.floor((w - btn_w) / 2)
+            local y = acc_y + (i - 1) * (btn_h + gap)
+            local sel = (i == self.account_selected)
+            local bg = sel and colors.accent or colors.panel
+            local txt_color = sel and colors.bg or colors.text
+            ui.rect(x, y, btn_w, btn_h, bg, 8)
+            ui.outline(x, y, btn_w, btn_h, sel and colors.text or colors.muted, 8)
+            local label = ui.fit((acc.title or "Аккаунт") .. (acc.key == active and " (активен)" or ""), f.normal, btn_w - 20)
+            local tx = x + 10
+            local ty = y + math.floor((btn_h - f.normal:getHeight()) / 2)
+            ui.text(label, tx, ty, f.normal, txt_color)
+            self.account_bounds[i] = {x = x, y = y, w = btn_w, h = btn_h, key = acc.key}
+        end
+        acc_y = acc_y + #saved * (btn_h + gap) + 8
+    end
 
     -- Menu items
     local btn_w = 300
@@ -353,20 +394,43 @@ function auth_screen:keypressed(key)
         return
     end
 
+    local accs, active = {}, nil
+    if self.callbacks and self.callbacks.accounts then
+        local l, a = self.callbacks.accounts()
+        accs = l or {}
+        active = a
+    end
+    local saved = {}
+    for _, a in ipairs(accs) do if a.authorized then saved[#saved+1] = a end end
+
     if key == "up" then
-        self.selected_item = math.max(1, self.selected_item - 1)
+        if #saved > 0 and self.account_selected > 1 then
+            self.account_selected = self.account_selected - 1
+        else
+            self.selected_item = math.max(1, self.selected_item - 1)
+        end
     elseif key == "down" then
-        self.selected_item = math.min(#self.items, self.selected_item + 1)
+        if #saved > 0 and self.account_selected < #saved then
+            self.account_selected = self.account_selected + 1
+        else
+            self.selected_item = math.min(#self.items, self.selected_item + 1)
+        end
     elseif key == "return" or key == "kpenter" or key == "a" then
-        local item = self.items[self.selected_item]
-        if item == "Выйти из приложения" then
-            love.event.quit()
-        elseif item == "Закрыть все процессы ТГ" then
-            self:close_all_tg()
-        elseif item == "Очистить все данные" then
-            self:clear_all_data()
-        elseif item == "Настройки VPN" then
-            -- Could switch to VPN tab here
+        if #saved > 0 and self.account_bounds[self.account_selected] then
+            local key_name = saved[self.account_selected].key
+            if key_name ~= active and self.callbacks.switch_account then
+                self.callbacks.switch_account(key_name)
+            end
+        else
+            local item = self.items[self.selected_item]
+            if item == "Выйти из приложения" then
+                love.event.quit()
+            elseif item == "Закрыть все процессы ТГ" then
+                self:close_all_tg()
+            elseif item == "Очистить все данные" then
+                self:clear_all_data()
+            elseif item == "Настройки VPN" then
+            end
         end
     elseif key == "escape" then
         love.event.quit()

@@ -181,6 +181,7 @@ function messenger_screen.new(fonts, tg)
     self.fullscreen_zoom = 1
     self.fullscreen_pan_x = 0
     self.fullscreen_pan_y = 0
+    self.fullscreen_drag_start = nil
     self.notification_timer = nil
     self.smooth_scroll = 0
     self.scroll_dir = nil

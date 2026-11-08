@@ -254,18 +254,15 @@ return function(telegram)
             input_message_content = {
                 ["@type"] = "inputMessageDocument",
                 document = {
-                    ["@type"] = "inputDocument",
-                    document = {
-                        ["@type"] = "inputFileLocal",
-                        path = path,
-                        expected_size = (function()
-                            local f = io.open(path, "rb")
-                            if not f then return 0 end
-                            local sz = f:seek("end")
-                            f:close()
-                            return sz or 0
-                        end)(),
-                    },
+                    ["@type"] = "inputFileLocal",
+                    path = path,
+                    expected_size = (function()
+                        local f = io.open(path, "rb")
+                        if not f then return 0 end
+                        local sz = f:seek("end")
+                        f:close()
+                        return sz or 0
+                    end)(),
                 },
                 caption = {["@type"] = "formattedText", text = ""},
             },

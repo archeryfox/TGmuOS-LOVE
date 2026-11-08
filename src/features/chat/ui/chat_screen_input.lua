@@ -248,9 +248,11 @@ return function(messenger_screen, layout)
         if kind == "messagePhoto" then
             self.fullscreen_media = {message = message, kind = "photo"}
             self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
         elseif kind == "messageVideo" or kind == "messageVideoNote" then
             self.fullscreen_media = {message = message, kind = "video", video_note = kind == "messageVideoNote"}
             self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
             self.tg:request_media_playback(message)
         elseif kind == "messageAnimation" or kind == "messageSticker" then
             -- GIF/video/sticker playback via context menu ("Воспроизвести"); fullscreen
@@ -324,6 +326,7 @@ return function(messenger_screen, layout)
             self.fullscreen_media = {message = item.message, kind = "photo", media_index = item.media_index}
         end
 self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
         self.fullscreen_pan_x = 0
         self.fullscreen_pan_y = 0
         self.player_controls = nil
@@ -380,6 +383,7 @@ self.fullscreen_zoom = 1
             end
             self.fullscreen_media = {message = msg, video_note = (kind == "video_note"), kind = kind, media_index = media_index}
             self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
             self.fullscreen_pan_x = 0
             self.fullscreen_pan_y = 0
         elseif item.action == "open_sticker_pack_by_name" then
@@ -637,6 +641,7 @@ self.fullscreen_zoom = 1
                 self.fullscreen_media = nil
                 self.player_controls = nil
                 self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
                 self.fullscreen_pan_x = 0
                 self.fullscreen_pan_y = 0
             elseif key == "return" or key == "kpenter" then
@@ -1203,6 +1208,7 @@ self.fullscreen_zoom = 1
                             video_note = content["@type"] == "messageVideoNote",
                         }
                         self.fullscreen_zoom = 1
+        self.fullscreen_drag_start = nil
                         if is_video then self.tg:request_media_playback(media_hit.message) end
                     end
                     self.last_media_click = nil

@@ -420,7 +420,10 @@ function love.load()
     })
 
     screens = {
-        auth = auth_screen.new(fonts, tg),
+        auth = auth_screen.new(fonts, tg, {
+            accounts = function() return account_store.accounts, account_store.active_key end,
+            switch_account = function(key) pending_account_key = key end,
+        }),
         messenger = messenger_screen.new(fonts, tg),
         profile = profile_screen.new(fonts, tg),
         settings = settings_screen.new(fonts, tg, {
