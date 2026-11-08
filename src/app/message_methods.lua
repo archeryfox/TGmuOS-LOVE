@@ -220,10 +220,13 @@ return function(telegram)
             chat_id = chat_id,
             input_message_content = {
                 ["@type"] = "inputMessageSticker",
-                sticker = input_file,
+                sticker = {
+                    ["@type"] = "inputSticker",
+                    sticker = input_file,
+                    width = (sticker.width or file.width or 512),
+                    height = (sticker.height or file.height or 512),
+                },
                 emoji = sticker.emoji or "",
-                width = (sticker.width or file.width or 512),
-                height = (sticker.height or file.height or 512),
             },
         })
     end
@@ -236,15 +239,18 @@ return function(telegram)
             input_message_content = {
                 ["@type"] = "inputMessageDocument",
                 document = {
-                    ["@type"] = "inputFileLocal",
-                    path = path,
-                    expected_size = (function()
-                        local f = io.open(path, "rb")
-                        if not f then return 0 end
-                        local sz = f:seek("end")
-                        f:close()
-                        return sz or 0
-                    end)(),
+                    ["@type"] = "inputDocument",
+                    document = {
+                        ["@type"] = "inputFileLocal",
+                        path = path,
+                        expected_size = (function()
+                            local f = io.open(path, "rb")
+                            if not f then return 0 end
+                            local sz = f:seek("end")
+                            f:close()
+                            return sz or 0
+                        end)(),
+                    },
                 },
                 caption = {["@type"] = "formattedText", text = ""},
             },
@@ -259,15 +265,20 @@ return function(telegram)
             input_message_content = {
                 ["@type"] = "inputMessagePhoto",
                 photo = {
-                    ["@type"] = "inputFileLocal",
-                    path = path,
-                    expected_size = (function()
-                        local f = io.open(path, "rb")
-                        if not f then return 0 end
-                        local sz = f:seek("end")
-                        f:close()
-                        return sz or 0
-                    end)(),
+                    ["@type"] = "inputPhoto",
+                    photo = {
+                        ["@type"] = "inputFileLocal",
+                        path = path,
+                        expected_size = (function()
+                            local f = io.open(path, "rb")
+                            if not f then return 0 end
+                            local sz = f:seek("end")
+                            f:close()
+                            return sz or 0
+                        end)(),
+                    },
+                    width = 0,
+                    height = 0,
                 },
                 caption = {["@type"] = "formattedText", text = ""},
                 width = 0,
