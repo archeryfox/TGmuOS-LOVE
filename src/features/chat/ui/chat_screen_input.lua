@@ -531,19 +531,28 @@ self.fullscreen_zoom = 1
                 elseif key == "pagedown" then
                     pack.focus = math.min(#pack.stickers, pack.focus + columns * rows_per_page)
                     pack.scroll = math.min(max_scroll, (pack.scroll or 0) + rows_per_page)
-                elseif key == "a" or key == "x" then
-                    if self.tg.current_chat_id then
+                elseif key == "a" or key == "return" or key == "kpenter" or key == "x" then
+                    if key == "x" then
                         local sticker = pack.stickers[pack.focus]
-                        if sticker then self.tg:send_sticker(self.tg.current_chat_id, sticker) end
-                    end
-                elseif key == "return" or key == "kpenter" then
-                    local sticker = pack.stickers[pack.focus]
-                    local file = sticker and sticker.sticker
-                    local entry = file and self.tg.stickers and self.tg.stickers[file.id]
-                    local img = entry and (entry.image or (entry.frames and entry.frames[1]))
-                    if img then
-                        self.sticker_fullscreen_image = img
-                        self.sticker_fullscreen_sticker = sticker
+                        local file = sticker and sticker.sticker
+                        local entry = file and self.tg.stickers and self.tg.stickers[file.id]
+                        local img = entry and (entry.image or (entry.frames and entry.frames[1]))
+                        if img then
+                            self.sticker_fullscreen_image = img
+                            self.sticker_fullscreen_sticker = sticker
+                        end
+                    else
+                        if self.tg.current_chat_id then
+                            local sticker = pack.stickers[pack.focus]
+                            if sticker then
+                                self.tg:send_sticker(self.tg.current_chat_id, sticker)
+                                self.tg.action_status = "Отправка стикера…"
+                            else
+                                self.tg.action_error = "Нет текущего чата"
+                            end
+                        else
+                            self.tg.action_error = "Откройте чат для отправки"
+                        end
                     end
                 end
                 -- keep focus visible
