@@ -185,3 +185,39 @@ luajit -e "assert(loadfile('src/shared/api/tdlib_client.lua'))"
 - `src/shared/ui/virtual_keyboard.lua` — экранная клавиатура.
 - `mux_launch.sh` — запуск LÖVE и путь конфига.
 - `tools/tgkill.sh`, `tools/tgclose.sh` — остановка процессов.
+
+---
+
+## 2026-11-08 — Выход из этапа ввода 2FA-пароля
+
+### Симптом
+
+После успешного QR-сканирования TDLib запрашивает 2FA-пароль
+(`authorizationStateWaitPassword`). Пользователь не хочет входить в эту
+учётку, но выйти с этапа ввода пароля нельзя: TDLib не поддерживает возврат
+к предыдущему этапу, кнопка «Назад» на клавиатуре не сбрасывала состояние.
+
+### Причина
+
+`restart_account` (ранее) просто перезапускал TDLib для того же аккаунта
+(`pending_account_key = active_key`). Но TDLib восстанавливал сессию из БД и
+снова уходил в `authorizationStateWaitPassword`, поэтому этап ввода пароля
+возвращался.
+
+### Исправление
+
+В `main.lua` callback `restart_account` теперь:
+
+1. помечает аккаунт как неавторизованный (`account.authorized = false`);
+2. удаляет каталог БД аккаунта (`rm -rf .../tdlib`);
+3. вызывает `save_account_store()`;
+4. ставит `pending_account_key = key`, чтобы TDLib запустился заново.
+
+Результат: TDLib стартует с чистой БД, доходит до QR-этапа, пользователь
+может войти в другую учётку или отменить вход. Добавлена видимая кнопка
+«Назад» (правый верхний угол) и клавиша «Назад» на виртуальной клавиатуре.
+
+### Файлы
+
+- `main.lua` — `restart_account` callback.
+- `src/features/auth/ui/auth_screen.lua` — кнопка «Назад» и обработка `back`.
