@@ -45,6 +45,8 @@ function settings_screen:items()
     local accounts = self:accounts()
     local items = {{id = "exit_app"}}
     items[#items + 1] = {id = "profile"}
+    items[#items + 1] = {id = "theme"}
+    items[#items + 1] = {id = "wallpaper"}
     items[#items + 1] = {id = "scale"}
     items[#items + 1] = {id = "performance"}
     items[#items + 1] = {id = "autoplay_videos"}
@@ -121,6 +123,8 @@ local is_abxy = item.id == "abxy"
         local is_add = item.id == "add_account"
         local is_logout = item.id == "logout"
         local is_profile = item.id == "profile"
+        local is_theme = item.id == "theme"
+        local is_wallpaper = item.id == "wallpaper"
 
         local bg = selected and colors.accent or colors.panel_alt
         if is_exit then bg = selected and colors.red or colors.panel_alt end
@@ -192,6 +196,16 @@ local is_abxy = item.id == "abxy"
             ui.text("Открыть профиль", 60, y + 7, f.normal, colors.text)
             ui.text("Enter — открыть", w - 180, y + 7, f.small, colors.muted)
             self.profile_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif is_theme then
+            local cur = (self.callbacks.get_theme and self.callbacks.get_theme()) or "dark"
+            ui.text("Тема: " .. cur, 60, y + 7, f.normal, colors.text)
+            ui.text("Enter — сменить", w - 180, y + 7, f.small, colors.muted)
+            self.theme_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif is_wallpaper then
+            local cur = (self.callbacks.get_wallpaper and self.callbacks.get_wallpaper()) or "выкл"
+            ui.text("Обои чата: " .. cur, 60, y + 7, f.normal, colors.text)
+            ui.text("Enter — переключить", w - 180, y + 7, f.small, colors.muted)
+            self.wallpaper_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_abxy then
             local half_gap = 12
             local half_w = math.floor((w - 80 - half_gap) / 2)
@@ -299,6 +313,10 @@ function settings_screen:activate_item(item)
         end
     elseif item.id == "profile" then
         if self.callbacks.open_profile then self.callbacks.open_profile() end
+    elseif item.id == "theme" then
+        if self.callbacks.cycle_theme then self.callbacks.cycle_theme() end
+    elseif item.id == "wallpaper" then
+        if self.callbacks.toggle_wallpaper then self.callbacks.toggle_wallpaper() end
     elseif item.id == "scale" then
         ui.set_scale(self.scale)
     elseif item.id == "performance" then

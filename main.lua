@@ -32,6 +32,34 @@ local function read_first_line(path)
     return value and value:gsub("%s+$", "")
 end
 
+local function load_theme()
+    local handle = io.open("theme.conf", "r")
+    if handle then
+        local name = handle:read("*l")
+        handle:close()
+        name = name and name:gsub("%s+$", "")
+        if name and ui and ui.set_theme then ui.set_theme(name) end
+    end
+end
+local function save_theme(name)
+    local handle = io.open("theme.conf", "w")
+    if handle then handle:write(name .. "\n"); handle:close() end
+end
+
+local wallpaper_enabled = false
+local function load_wallpaper()
+    local handle = io.open("wallpaper.conf", "r")
+    if handle then
+        local v = handle:read("*l")
+        handle:close()
+        wallpaper_enabled = (v and v:gsub("%s+$", "") == "1")
+    end
+end
+local function save_wallpaper(v)
+    local handle = io.open("wallpaper.conf", "w")
+    if handle then handle:write((v and "1" or "0") .. "\n"); handle:close() end
+end
+
 local function detect_abxy_layout()
     local mode = os.getenv("TG_ABXY")
     if mode == "modern" or mode == "retro" then return mode end
@@ -402,6 +430,8 @@ function love.load()
     ABXY_LAYOUT = load_saved_abxy()
     rebuild_gamepad_keys()
     fonts = ui.load_fonts(settings_scale)
+    load_theme()
+    load_wallpaper()
     love.mouse.setVisible(true)
     love.mouse.setRelativeMode(false)
 
@@ -433,6 +463,21 @@ function love.load()
             open_profile = function() show_profile(tg.current_chat_id, tg.me and tg.me.id) end,
             abxy_layout = function() return ABXY_LAYOUT end,
             toggle_abxy = toggle_abxy,
+            get_theme = function() return ui.current_theme end,
+            get_wallpaper = function() return wallpaper_enabled and "вкл" or "выкл" end,
+            toggle_wallpaper = function()
+                wallpaper_enabled = not wallpaper_enabled
+                save_wallpaper(wallpaper_enabled)
+            end,
+            cycle_theme = function()
+                local order = {"dark", "light", "redwine", "bluemoon", "xmas", "hackers", "violet"}
+                local cur = ui.current_theme or "dark"
+                local idx = 1
+                for i, n in ipairs(order) do if n == cur then idx = i; break end end
+                idx = (idx % #order) + 1
+                ui.set_theme(order[idx])
+                save_theme(order[idx])
+            end,
             restart_vpn = function(callback)
                 os.execute('pkill -9 sing-box 2>/dev/null')
                 -- Reset TDLib proxy state so it re-confirms with the new sing-box instance
