@@ -73,8 +73,12 @@ return function(telegram)
         end
         local file_id = self.video_by_message[message.id]
         if file_id then
-            diag("ensure_video: already mapped msg=" .. tostring(message.id) .. " id=" .. tostring(file_id))
-            return self.videos[file_id]
+            local entry = self.videos[file_id]
+            if entry then
+                return entry
+            end
+            -- Already requested download, waiting for it to complete
+            return nil
         end
         local video = self:choose_video_size(message)
         if not video then

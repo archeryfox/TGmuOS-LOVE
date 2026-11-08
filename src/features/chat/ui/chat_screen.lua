@@ -447,7 +447,7 @@ function messenger_screen:update(dt)
         self.status_info.last_refresh = love.timer.getTime()
         self.status_info.time = os.date("%H:%M")
         local ok, b = pcall(function()
-            local f = io.popen("cat /sys/class/power_supply/battery/capacity 2>/dev/null || cat /sys/class/power_supply/BAT0/capacity 2>/dev/null")
+        local f = io.popen("cat /sys/class/power_supply/axp2202-battery/capacity 2>/dev/null || cat /sys/class/power_supply/battery/capacity 2>/dev/null")
             if f then local v = f:read("*l"); f:close(); return v end
         end)
         self.status_info.battery = (ok and b and b ~= "") and (b .. "%") or "?"
@@ -549,7 +549,7 @@ function messenger_screen:draw()
     local si = self.status_info
     local status_text = string.format("%s  🔋%s  📶%s  VPN:%s",
         si.time or os.date("%H:%M"), si.battery or "?", si.ip or "?", si.vpn or "?")
-    ui.text(ui.fit(status_text, f.tiny, left_width - 16), 8, 4, f.tiny, colors.muted)
+    ui.text(ui.fit(status_text, f.tiny, w - 24), (w - f.tiny:getWidth(ui.fit(status_text, f.tiny, w - 24))) / 2, 4, f.tiny, colors.muted)
 
     self:draw_chat_list(left_width, h)
 
