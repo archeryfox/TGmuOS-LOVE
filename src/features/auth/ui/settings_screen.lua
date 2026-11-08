@@ -18,6 +18,7 @@ function settings_screen.new(fonts, tg, callbacks)
         selected_item = 1,
         scroll_offset = 0,
         account_scroll = 0,
+        account_bounds = {},
         logout_confirm = false,
         vpn_restarting = false,
         vpn_spinner = 0,
