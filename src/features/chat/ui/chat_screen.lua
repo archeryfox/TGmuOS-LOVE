@@ -752,22 +752,39 @@ function messenger_screen:draw_context_menu(f, colors, w, h)
     local menu_w = 240
     local row_h = 24
     local items = self.context_menu.items or {}
-    local menu_h = #items * row_h + 12
+    local max_visible = 12
+    local visible_count = math.min(#items, max_visible)
+    local menu_h = visible_count * row_h + 12
     local anim = self.menu_anim or 1
     local offset = (1 - anim) * 8
     local mx2 = math.min(mx, w - menu_w - 8)
     local my2 = math.min(my + offset, h - menu_h - 8)
 
+    self.context_menu.scroll = self.context_menu.scroll or 0
+    local scroll = self.context_menu.scroll
+    if scroll < 0 then scroll = 0 end
+    if scroll > math.max(0, #items - visible_count) then scroll = math.max(0, #items - visible_count) end
+    self.context_menu.scroll = scroll
+
     ui.rect(mx2, my2, menu_w, menu_h, alpha_color(colors.panel, 0.97 * anim), 6)
     ui.outline(mx2, my2, menu_w, menu_h, alpha_color(colors.accent_dark, anim), 6)
 
-    for index, item in ipairs(items) do
-        local row_y = my2 + 6 + (index - 1) * row_h
+    for vi = 1, visible_count do
+        local index = scroll + vi
+        local item = items[index]
+        if not item then break end
+        local row_y = my2 + 6 + (vi - 1) * row_h
         if self.context_menu.index == index then
             ui.rect(mx2 + 4, row_y - 2, menu_w - 8, row_h,
                 alpha_color(colors.accent_dark, anim), 4)
         end
         ui.text(item.label, mx2 + 12, row_y, f.small, alpha_color(colors.text, anim))
+    end
+    if #items > visible_count then
+        local bar_h = math.max(10, visible_count / #items * (menu_h - 12))
+        local bar_y = my2 + 6 + (scroll / math.max(1, #items - visible_count)) * (menu_h - 12 - bar_h)
+        ui.rect(mx2 + menu_w - 6, my2 + 6, 4, menu_h - 12, colors.panel_alt, 2)
+        ui.rect(mx2 + menu_w - 6, bar_y, 4, bar_h, colors.accent, 2)
     end
 end
 

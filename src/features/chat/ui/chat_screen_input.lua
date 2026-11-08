@@ -119,6 +119,7 @@ return function(messenger_screen, layout)
             end
         elseif self.search_active then
             self:submit_search()
+            if self.keyboard then self.keyboard.visible = false end
         elseif self.tg.current_chat_id then
             if self.model.input ~= "" then
                 self:send()
@@ -624,8 +625,13 @@ self.fullscreen_zoom = 1
             local count = #(cm.items or {})
             if key == "up" then
                 cm.index = math.max(1, (cm.index or 1) - 1)
+                cm.scroll = cm.scroll or 0
+                if cm.index <= cm.scroll then cm.scroll = cm.index - 1 end
             elseif key == "down" then
                 cm.index = math.min(count, (cm.index or 1) + 1)
+                cm.scroll = cm.scroll or 0
+                local max_visible = 12
+                if cm.index > cm.scroll + max_visible then cm.scroll = cm.index - max_visible end
             elseif key == "return" or key == "kpenter" then
                 local item = cm.items and cm.items[cm.index or 1]
                 self.context_menu = nil
