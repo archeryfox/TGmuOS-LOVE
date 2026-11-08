@@ -116,6 +116,9 @@ function auth_screen:draw()
     for _, a in ipairs(accs) do
         if a.authorized then saved[#saved+1] = a end
     end
+    local btn_w = 300
+    local btn_h = 30
+    local gap = 8
     local acc_y = status_y + 10
     if #saved > 0 then
         ui.text("Сохранённые аккаунты:", 40, acc_y, f.small, colors.accent)
@@ -139,9 +142,6 @@ function auth_screen:draw()
     end
 
     -- Menu items
-    local btn_w = 300
-    local btn_h = 30
-    local gap = 4
     local menu_h = #self.items * btn_h + (#self.items - 1) * gap
     local menu_y = h - menu_h - 18
     for i, item in ipairs(self.items) do
