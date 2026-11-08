@@ -436,7 +436,7 @@ return function(telegram)
         if not chat_id or not message_id then return false end
         self.action_error = ""
         self.action_status = (emoji and emoji ~= "") and ("Реакция " .. emoji) or "Убираю реакцию..."
-        local reaction = {}
+        local reaction = setmetatable({}, {__jsontype = "array"})
         if emoji and emoji ~= "" then
             reaction[1] = {["@type"] = "reactionTypeEmoji", emoji = emoji}
         end
