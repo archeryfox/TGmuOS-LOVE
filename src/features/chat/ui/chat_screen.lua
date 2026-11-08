@@ -563,6 +563,7 @@ function messenger_screen:draw()
     self:draw_sticker_pack(w, h)
     self:draw_text_preview(w, h)
     self:draw_file_browser(w, h)
+    self:draw_media_player(w, h)
 end
 
 function messenger_screen:draw_file_browser(w, h)
@@ -609,6 +610,43 @@ function messenger_screen:draw_file_browser(w, h)
     end
     love.graphics.setScissor()
     ui.text("↑↓ навигация · A Enter/отправить · B/Esc закрыть · PgUp/PgDn", panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
+end
+
+function messenger_screen:draw_media_player(w, h)
+    local np = self.tg and self.tg.now_playing
+    if not np then return end
+    local pos, dur, playing = self.tg:media_playback_state(np)
+    local f = self.fonts
+    local colors = ui.colors
+    local bar_h = 40
+    local bar_y = h - bar_h
+    ui.rect(0, bar_y, w, bar_h, colors.panel, 0)
+    ui.outline(0, bar_y, w, bar_h, colors.accent, 0)
+    -- play/pause icon
+    local btn_x, btn_y = 12, bar_y + 10
+    love.graphics.setColor(1, 1, 1, 1)
+    if playing then
+        love.graphics.rectangle("fill", btn_x + 4, btn_y + 2, 4, 16)
+        love.graphics.rectangle("fill", btn_x + 12, btn_y + 2, 4, 16)
+    else
+        love.graphics.polygon("fill", btn_x + 4, btn_y + 2, btn_x + 4, btn_y + 18, btn_x + 18, btn_y + 10)
+    end
+    -- progress bar
+    local bar_x = btn_x + 28
+    local bar_w = w - bar_x - 120
+    local bar_y2 = bar_y + 16
+    ui.rect(bar_x, bar_y2, bar_w, 6, colors.panel_alt, 3)
+    if dur > 0 then
+        local frac = math.min(1, pos / dur)
+        ui.rect(bar_x, bar_y2, math.floor(bar_w * frac), 6, colors.accent, 3)
+    end
+    -- time text
+    local function fmt(t)
+        t = math.max(0, t or 0)
+        return string.format("%d:%02d", math.floor(t / 60), math.floor(t % 60))
+    end
+    ui.text(fmt(pos) .. " / " .. fmt(dur), bar_x + bar_w + 8, bar_y + 12, f.tiny, colors.muted)
+    ui.text("Enter — play/pause  ←/→ — ±10с  B — стоп", 12, bar_y + 24, f.tiny, colors.muted)
 end
 
 function messenger_screen:draw_text_preview(w, h)

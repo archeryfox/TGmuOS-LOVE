@@ -8,8 +8,9 @@ return function(telegram)
     function telegram:request_media_playback(message)
         local kind, file_id, entry = self:media_file_for_message(message)
         if not kind or not file_id or not entry then
-            return false, "Этот формат анимации не поддерживается"
+            return false, "Этот формат анимации не поддержывается"
         end
+        self.now_playing = message
         entry.autoplay = true
         entry.paused = false
         entry.play_position = 0

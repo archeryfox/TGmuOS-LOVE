@@ -446,6 +446,28 @@ self.fullscreen_zoom = 1
         if self.keyboard and self.keyboard.visible then
             if self:handle_virtual_keyboard(key) then return end
         end
+        -- Media player bar controls (when media is playing and not fullscreen)
+        if self.tg.now_playing and not self.fullscreen_media then
+            local np = self.tg.now_playing
+            if key == "return" or key == "kpenter" or key == "a" then
+                local _, _, playing = self.tg:media_playback_state(np)
+                if playing then self.tg:pause_media_playback(np)
+                else self.tg:request_media_playback(np) end
+                return
+            elseif key == "left" then
+                local pos, dur = self.tg:media_playback_state(np)
+                self.tg:seek_media_playback(np, math.max(0, (pos or 0) - 10))
+                return
+            elseif key == "right" then
+                local pos, dur = self.tg:media_playback_state(np)
+                self.tg:seek_media_playback(np, math.min(dur or 0, (pos or 0) + 10))
+                return
+            elseif key == "escape" or key == "b" then
+                self.tg:pause_media_playback(np)
+                self.tg.now_playing = nil
+                return
+            end
+        end
         if self.file_browser then
             local fb = self.file_browser
             local files = fb.files or {}
@@ -704,10 +726,10 @@ self.fullscreen_zoom = 1
                 end
             elseif key == "pageup" and fm.kind == "video" then
                 local position = self.tg:media_playback_state(fm.message)
-                self.tg:seek_media_playback(fm.message, math.max(0, (position or 0) - 5))
+                self.tg:seek_media_playback(fm.message, math.max(0, (position or 0) - 10))
             elseif key == "pagedown" and fm.kind == "video" then
                 local position, duration = self.tg:media_playback_state(fm.message)
-                self.tg:seek_media_playback(fm.message, math.min(duration or 0, (position or 0) + 5))
+                self.tg:seek_media_playback(fm.message, math.min(duration or 0, (position or 0) + 10))
             elseif key == "r2" then
                 self.r2_pressed = true
             elseif key == "l2" then
