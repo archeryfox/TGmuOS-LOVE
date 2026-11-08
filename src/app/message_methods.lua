@@ -203,15 +203,24 @@ return function(telegram)
             self:load_sticker_file(file)
             return
         end
+        local fl = file["local"] or {}
+        local input_file
+        if fl.is_downloading_completed and fl.path and fl.path ~= "" then
+            local sz = 0
+            local f = io.open(fl.path, "rb")
+            if f then sz = f:seek("end") or 0; f:close() end
+            input_file = {["@type"] = "inputFileLocal", path = fl.path, expected_size = sz}
+        elseif file.remote and file.remote.id and file.remote.id ~= "" then
+            input_file = {["@type"] = "inputFileRemote", id = file.remote.id}
+        else
+            input_file = {["@type"] = "inputFileId", id = file_id}
+        end
         self:send({
             ["@type"] = "sendMessage",
             chat_id = chat_id,
             input_message_content = {
                 ["@type"] = "inputMessageSticker",
-                sticker = {
-                    ["@type"] = "inputFileId",
-                    id = file_id,
-                },
+                sticker = input_file,
                 emoji = sticker.emoji or "",
                 width = (sticker.width or file.width or 512),
                 height = (sticker.height or file.height or 512),
@@ -229,8 +238,15 @@ return function(telegram)
                 document = {
                     ["@type"] = "inputFileLocal",
                     path = path,
+                    expected_size = (function()
+                        local f = io.open(path, "rb")
+                        if not f then return 0 end
+                        local sz = f:seek("end")
+                        f:close()
+                        return sz or 0
+                    end)(),
                 },
-                caption = nil,
+                caption = {["@type"] = "formattedText", text = ""},
             },
         })
     end
@@ -245,8 +261,17 @@ return function(telegram)
                 photo = {
                     ["@type"] = "inputFileLocal",
                     path = path,
+                    expected_size = (function()
+                        local f = io.open(path, "rb")
+                        if not f then return 0 end
+                        local sz = f:seek("end")
+                        f:close()
+                        return sz or 0
+                    end)(),
                 },
-                caption = nil,
+                caption = {["@type"] = "formattedText", text = ""},
+                width = 0,
+                height = 0,
             },
         })
     end
