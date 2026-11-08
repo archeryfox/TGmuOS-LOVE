@@ -266,6 +266,7 @@ end
 
 local account_store = {active_key = "account_1", accounts = {}}
 local pending_account_key
+local last_mouse_move
 
 local function account_key_valid(key)
     return type(key) == "string" and key:match("^account_%d+$") ~= nil
@@ -438,6 +439,7 @@ function love.load()
     load_wallpaper()
     love.mouse.setVisible(true)
     love.mouse.setRelativeMode(false)
+    last_mouse_move = love.timer.getTime()
 
     load_account_store()
     start_account(account_store.active_key)
@@ -987,4 +989,9 @@ function love.errorhandler(msg)
         love.graphics.present()
         love.timer.sleep(0.016)
     end
+end
+
+function love.mousemoved(x, y, dx, dy)
+    last_mouse_move = love.timer.getTime()
+    love.mouse.setVisible(true)
 end

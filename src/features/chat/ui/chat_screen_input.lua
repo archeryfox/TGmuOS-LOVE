@@ -612,9 +612,7 @@ self.fullscreen_zoom = 1.2
                 if focus_row < scroll then pack.scroll = focus_row end
                 if focus_row >= scroll + rows_per_page then pack.scroll = focus_row - rows_per_page + 1 end
                 pack.scroll = math.max(0, math.min(max_scroll, pack.scroll or 0))
-                return
             end
-            if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             if key == "y" then
                 self.tg.sticker_set_viewer = nil
                 self.sticker_fullscreen_image = nil
@@ -625,7 +623,9 @@ self.fullscreen_zoom = 1.2
                     self.keyboard.lang = "ru"
                     self.keyboard:_sync_layout()
                 end
+                return
             end
+            if key == "escape" or key == "b" then self.tg.sticker_set_viewer = nil end
             return
         end
         if (key == "p" or key == "m") and not self.tg.current_chat_id then
