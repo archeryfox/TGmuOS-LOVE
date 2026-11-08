@@ -74,7 +74,7 @@ local CONTROLS = {
     {label = "Файлы", action = "files", width = 58},
     {label = "⌫", action = "backspace", width = 52},
     {label = "⏎", action = "enter", width = 52},
-    {label = "Скрыть", action = "hide", width = 66},
+
 }
 
 local PAD = 8
@@ -107,10 +107,8 @@ for i, c in ipairs(CONTROLS) do
     if i > 1 then ctrl_w = ctrl_w + KEY_GAP end
 end
 KB_W = math.max(KB_W, ctrl_w)
--- Don't shrink KB_W below ctrl_w; keyboard may overflow screen but keys stay within it
-    if KB_W < ui.width() - PAD * 2 then
-        KB_W = ui.width() - PAD * 2
-    end
+-- Cap keyboard width to screen so keys never overflow screen edges
+KB_W = math.min(KB_W, ui.width() - PAD * 2)
 
 local function upper_key(key)
     return RU_UPPER[key] or string.upper(key)
