@@ -63,7 +63,13 @@ return function(messenger_screen)
                 local scale = math.max(cell / image:getWidth(), cell / image:getHeight())
                 local sw, sh = image:getWidth() * scale, image:getHeight() * scale
                 local sx, sy, sw_clip, sh_clip = love.graphics.getScissor()
-                love.graphics.setScissor(cell_x, cell_y, cell, cell)
+                local csx = math.max(cell_x, self.conv_area_x or 0)
+                local csy = math.max(cell_y, self.conv_area_y or 0)
+                local csw = math.min(cell_x + cell, (self.conv_area_x or 0) + (self.conv_area_w or 9999)) - csx
+                local csh = math.min(cell_y + cell, (self.conv_area_y or 0) + (self.conv_area_h or 9999)) - csy
+                if csw > 0 and csh > 0 then
+                    love.graphics.setScissor(csx, csy, csw, csh)
+                end
                 love.graphics.draw(image, cell_x + (cell - sw) / 2, cell_y + (cell - sh) / 2, 0, scale, scale)
                 if sx then love.graphics.setScissor(sx, sy, sw_clip, sh_clip) else love.graphics.setScissor() end
             else

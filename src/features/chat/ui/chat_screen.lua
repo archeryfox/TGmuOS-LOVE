@@ -1735,7 +1735,13 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
         local media_x, media_y = x + padding, text_y
         local content_kind = message.content and message.content["@type"]
         -- Clip media to the message bubble so it never overflows onto other layers
-        love.graphics.setScissor(math.floor(x), math.floor(y), math.ceil(bubble_w), math.ceil(height))
+        local sx = math.max(math.floor(x), self.conv_area_x or 0)
+        local sy = math.max(math.floor(y), self.conv_area_y or 0)
+        local sw = math.min(math.ceil(x + bubble_w), (self.conv_area_x or 0) + (self.conv_area_w or 9999)) - sx
+        local sh = math.min(math.ceil(y + height), (self.conv_area_y or 0) + (self.conv_area_h or 9999)) - sy
+        if sw > 0 and sh > 0 then
+            love.graphics.setScissor(sx, sy, sw, sh)
+        end
         if content_kind == "messageVideoNote" then
             draw_circle_image(image, media_x, media_y, image_width)
             -- Duration label in corner
