@@ -140,6 +140,7 @@ function messenger_screen.new(fonts, tg)
     self.fonts = fonts
     self.tg = tg
     self.model = chat_model.new(tg)
+    self.status_info = {battery = "?", ip = "?", vpn = "?", last_refresh = 0, time = os.date("%H:%M")}
     self.keyboard = virtual_keyboard.new(fonts)
     self.model.input = ""
     self.archive_mode = false
@@ -441,6 +442,7 @@ function messenger_screen:update(dt)
     end
     self.menu_anim = math.min(1, (self.menu_anim or 1) + dt * 12)
     -- Refresh top status info every 5s
+    self.status_info = self.status_info or {battery = "?", ip = "?", vpn = "?", last_refresh = 0, time = os.date("%H:%M")}
     if (love.timer.getTime() - (self.status_info.last_refresh or 0)) > 5 then
         self.status_info.last_refresh = love.timer.getTime()
         self.status_info.time = os.date("%H:%M")
