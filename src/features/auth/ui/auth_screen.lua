@@ -283,7 +283,18 @@ function auth_screen:draw_password(w, h)
     if self.model:get_password_hint() ~= "" then
         ui.printf(self.model:get_password_hint(), 40, 84, w - 80, "center", f.small, colors.muted)
     end
-    ui.printf("B / Esc — вернуться к предыдущему этапу (перезапуск входа)", 40, h - 28, w - 80, "center", f.tiny, colors.muted)
+    -- Back button
+    local btn_w, btn_h = 200, 34
+    local bx = math.floor((w - btn_w) / 2)
+    local by = h - 70
+    ui.rect(bx, by, btn_w, btn_h, colors.panel_alt, 6)
+    ui.outline(bx, by, btn_w, btn_h, colors.accent, 6)
+    local lbl = "Назад"
+    local tx = bx + math.floor((btn_w - f.normal:getWidth(lbl)) / 2)
+    local ty = by + math.floor((btn_h - f.normal:getHeight()) / 2)
+    ui.text(lbl, tx, ty, f.normal, colors.text)
+    self.back_button = {x = bx, y = by, w = btn_w, h = btn_h}
+    ui.printf("B / Esc — вернуться к предыдущему этапу", 40, h - 28, w - 80, "center", f.tiny, colors.muted)
 
     local box_w = math.min(560, w - 80)
     local box_h = 40
@@ -449,6 +460,14 @@ function auth_screen:mousepressed(x, y, button)
         local exit_btn_y = 10
         if x >= exit_btn_x and x <= exit_btn_x + exit_btn_w and y >= exit_btn_y and y <= exit_btn_y + exit_btn_h then
             love.event.quit()
+        end
+        if self.model:is_password_mode() and self.back_button then
+            local b = self.back_button
+            if x >= b.x and x <= b.x + b.w and y >= b.y and y <= b.y + b.h then
+                if self.callbacks and self.callbacks.restart_account then
+                    self.callbacks.restart_account()
+                end
+            end
         end
     end
 end
