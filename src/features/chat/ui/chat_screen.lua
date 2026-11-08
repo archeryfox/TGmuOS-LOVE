@@ -675,7 +675,9 @@ function messenger_screen:draw_text_preview(w, h)
     ui.rect(panel_x, panel_y, panel_w, panel_h, colors.panel, 8)
     ui.outline(panel_x, panel_y, panel_w, panel_h, colors.accent, 8)
     local title = "Текстовый файл"
-    if tp.message and tp.message.content and tp.message.content.document then
+    if tp.path then
+        title = tp.path:match("([^/]+)$") or title
+    elseif tp.message and tp.message.content and tp.message.content.document then
         title = tp.message.content.document.file_name or title
     end
     ui.text(ui.fit(title, f.subtitle, panel_w - 24), panel_x + 12, panel_y + 8, f.subtitle, colors.text)

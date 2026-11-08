@@ -189,6 +189,16 @@ return function(messenger_screen, layout)
         if self.keyboard then self.keyboard.visible = false end
     end
 
+    function messenger_screen:open_text_preview(path)
+        local lines = {}
+        local fh = io.open(path, "r")
+        if fh then
+            for line in fh:lines() do lines[#lines + 1] = line end
+            fh:close()
+        end
+        self.text_preview = {loading = false, lines = lines, scroll = 0, message = nil, path = path}
+    end
+
     function messenger_screen:handle_virtual_keyboard(key)
         if key == "f1" then
             self:open_sticker_pack_list()
@@ -486,19 +496,20 @@ self.fullscreen_zoom = 1.2
                 if sel then
                     if sel.is_dir then
                         self:open_file_browser(sel.path)
-                    else
-                        if self.tg.current_chat_id then
-                            local ext = sel.name:match("%.([^%.]+)$")
-                            ext = ext and ext:lower() or ""
-                            if ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "webp" then
-                                self.tg:send_photo(self.tg.current_chat_id, sel.path)
-                            else
-                                self.tg:send_document(self.tg.current_chat_id, sel.path)
-                            end
-                            self.tg.action_status = "Отправка файла…"
+                    elseif sel.name:match("%.txt$") or sel.name:match("%.log$") or sel.name:match("%.md$") or sel.name:match("%.json$") or sel.name:match("%.lua$") then
+                        self:open_text_preview(sel.path)
+                    elseif self.tg.current_chat_id then
+                        local ext = sel.name:match("%.([^%.]+)$")
+                        ext = ext and ext:lower() or ""
+                        if ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "webp" then
+                            self.tg:send_photo(self.tg.current_chat_id, sel.path)
                         else
-                            self.tg.action_error = "Откройте чат для отправки"
+                            self.tg:send_document(self.tg.current_chat_id, sel.path)
                         end
+                        self.tg.action_status = "Отправка файла…"
+                        self.file_browser = nil
+                    else
+                        self.tg.action_error = "Откройте чат для отправки"
                         self.file_browser = nil
                     end
                 end

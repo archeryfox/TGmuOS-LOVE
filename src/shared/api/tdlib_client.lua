@@ -866,7 +866,7 @@ function telegram:handle_file(file)
                 local msg = self.text_preview.message
                 local doc = msg and msg.content and msg.content.document
                 local df = doc and doc.document
-                if df and tonumber(df.id) == file_id then
+                if df and tostring(df.id) == tostring(file_id) then
                     local lines = {}
                     local fh = io.open(file_local0.path, "r")
                     if fh then
