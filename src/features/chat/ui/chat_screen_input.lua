@@ -199,6 +199,26 @@ return function(messenger_screen, layout)
         self.text_preview = {loading = false, lines = lines, scroll = 0, message = nil, path = path}
     end
 
+    function messenger_screen:open_html_preview(path)
+        local html_render = require("src.shared.api.html_render")
+        local fh = io.open(path, "r")
+        local html = ""
+        if fh then
+            html = fh:read("*a") or ""
+            fh:close()
+        end
+        local blocks = html_render.parse(html)
+        local lines = {}
+        for _, b in ipairs(blocks) do
+            if b.type == "text" then
+                local line = ""
+                for _, r in ipairs(b.runs or {}) do line = line .. r.text end
+                lines[#lines + 1] = line
+            end
+        end
+        self.html_preview = {loading = false, blocks = blocks, lines = lines, scroll = 0, message = nil, path = path, images = {}}
+    end
+
     function messenger_screen:handle_virtual_keyboard(key)
         if key == "f1" then
             self:open_sticker_pack_list()
@@ -456,6 +476,36 @@ self.fullscreen_zoom = 1.2
             if sender_id then
                 self.tg:open_private_chat(sender_id)
             end
+        elseif item.action == "preview_text" then
+            if cm.message then
+                local doc = cm.message.content and cm.message.content.document
+                local file = doc and doc.document
+                self.text_preview = {loading = true, lines = {}, scroll = 0, message = cm.message, file_id = file and file.id}
+                if file and file.id then
+                    local fl = file["local"] or (file.file and file.file["local"]) or {}
+                    if not (fl.is_downloading_completed) then
+                        self.tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "text_preview:" .. tostring(file.id))
+                    else
+                        local path = fl.path
+                        if path then self:open_text_preview(path) end
+                    end
+                end
+            end
+        elseif item.action == "preview_html" then
+            if cm.message then
+                local doc = cm.message.content and cm.message.content.document
+                local file = doc and doc.document
+                self.html_preview = {loading = true, lines = {}, scroll = 0, message = cm.message, file_id = file and file.id}
+                if file and file.id then
+                    local fl = file["local"] or (file.file and file.file["local"]) or {}
+                    if not (fl.is_downloading_completed) then
+                        self.tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "html_preview:" .. tostring(file.id))
+                    else
+                        local path = fl.path
+                        if path then self:open_html_preview(path) end
+                    end
+                end
+            end
         end
     end
 
@@ -534,6 +584,26 @@ self.fullscreen_zoom = 1.2
             local tp = self.text_preview
             if key == "escape" or key == "b" then
                 self.text_preview = nil
+                return
+            elseif key == "up" then
+                tp.scroll = math.max(0, (tp.scroll or 0) - 1)
+                return
+            elseif key == "down" then
+                tp.scroll = (tp.scroll or 0) + 1
+                return
+            elseif key == "pageup" then
+                tp.scroll = math.max(0, (tp.scroll or 0) - 10)
+                return
+            elseif key == "pagedown" then
+                tp.scroll = (tp.scroll or 0) + 10
+                return
+            end
+            return
+        end
+        if self.html_preview then
+            local tp = self.html_preview
+            if key == "escape" or key == "b" then
+                self.html_preview = nil
                 return
             elseif key == "up" then
                 tp.scroll = math.max(0, (tp.scroll or 0) - 1)

@@ -28,13 +28,18 @@ function auth_screen.new(fonts, tg, callbacks)
     self.password = ""
     -- Navigation
     self.selected_item = 1
-    self.items = {"Авторизация", "Настройки VPN", "Очистить все данные", "Закрыть все процессы ТГ", "Выйти из приложения"}
+    self.items = {"Авторизация", "Настройки VPN", "Очистить все данные", "Удалить аккаунт", "Закрыть все процессы ТГ", "Выйти из приложения"}
     self.kb_row = 1
     self.kb_col = 1
     self.account_selected = 1
     self.account_bounds = {}
     self.kb_layer = "abc"
     self.kb_shift = false
+    self.delete_confirm = false
+    self.delete_confirm_item = nil
+    -- VPN state
+    self.vpn_restarting = false
+    self.vpn_spinner = 0
     setmetatable(self, {__index = auth_screen})
     self:build_keyboard()
     return self
@@ -45,6 +50,8 @@ function auth_screen:enter()
     self.selected_item = 1
     self.account_selected = 1
     self.was_password_mode = false
+    self.delete_confirm = false
+    self.delete_confirm_item = nil
     self:reset_keyboard()
 end
 
@@ -74,6 +81,10 @@ function auth_screen:update(dt)
         self:reset_keyboard()
     end
     self.was_password_mode = password_mode
+
+    if self.vpn_restarting then
+        self.vpn_spinner = (self.vpn_spinner + 0.1) % (math.pi * 2)
+    end
 end
 
 function auth_screen:draw()
@@ -180,6 +191,30 @@ function auth_screen:draw()
     end
 
     ui.text("↑↓ — выбор  A — выбрать  MENU — выход", 20, h - 14, f.tiny, colors.muted)
+
+    -- VPN restarting spinner overlay
+    if self.vpn_restarting then
+        local cx = math.floor(w / 2)
+        local cy = math.floor(h / 2 - 20)
+        local radius = 10
+        local angle = self.vpn_spinner
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setLineWidth(3)
+        love.graphics.arc("line", cx, cy, radius, angle, angle + math.pi * 1.5)
+        love.graphics.setLineWidth(1)
+        ui.printf("VPN перезапуск...", 40, cy + radius + 10, w - 80, "center", f.normal, colors.accent)
+    end
+
+    -- Delete confirmation dialog
+    if self.delete_confirm then
+        local pw, ph = 400, 140
+        local px, py = (w - pw) / 2, (h - ph) / 2
+        ui.rect(px, py, pw, ph, colors.panel, 8)
+        ui.outline(px, py, pw, ph, colors.accent, 8)
+        ui.printf("Удалить аккаунт " .. (self.delete_confirm_item or ""), px + 20, py + 16, pw - 40, "center", f.subtitle, colors.text)
+        ui.printf("Удалить всё, что связано с этим аккаунтом?", px + 20, py + 50, pw - 40, "center", f.normal, colors.text)
+        ui.printf("A — удалить   MENU/ESC — отмена", px + 20, py + 82, pw - 40, "center", f.tiny, colors.muted)
+    end
 end
 
 function auth_screen:reset_keyboard()
@@ -422,6 +457,21 @@ function auth_screen:keypressed(key)
     local saved = {}
     for _, a in ipairs(accs) do if a.authorized then saved[#saved+1] = a end end
 
+    -- Delete confirmation handling
+    if self.delete_confirm then
+        if key == "return" or key == "kpenter" or key == "a" then
+            if self.delete_confirm_item and self.callbacks.delete_account then
+                self.callbacks.delete_account(self.delete_confirm_item)
+            end
+            self.delete_confirm = false
+            self.delete_confirm_item = nil
+        elseif key == "escape" or key == "b" then
+            self.delete_confirm = false
+            self.delete_confirm_item = nil
+        end
+        return
+    end
+
     if key == "up" then
         if #saved > 0 and self.account_selected > 1 then
             self.account_selected = self.account_selected - 1
@@ -449,6 +499,22 @@ function auth_screen:keypressed(key)
             elseif item == "Очистить все данные" then
                 self:clear_all_data()
             elseif item == "Настройки VPN" then
+                if not self.vpn_restarting and self.callbacks.restart_vpn then
+                    self.vpn_restarting = true
+                    self.vpn_spinner = 0
+                    self.callbacks.restart_vpn(function()
+                        self.vpn_restarting = false
+                    end)
+                end
+            elseif item == "Удалить аккаунт" then
+                local active_acc = nil
+                for _, a in ipairs(accs) do
+                    if a.key == active then active_acc = a; break end
+                end
+                if active_acc then
+                    self.delete_confirm_item = active_acc.key
+                    self.delete_confirm = true
+                end
             end
         end
     elseif key == "escape" then

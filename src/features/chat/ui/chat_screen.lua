@@ -105,24 +105,37 @@ local function render_markdown(text, x, y, width, font, color)
       end
       -- If word is still wider than available width, force wrap (split is not possible, so just draw it overflowing)
       if cur_x == x and cur_x + w > x + width then
-        -- Word too long for line width, draw anyway but it will overflow
-      end
-      if style == "bold" then
-        love.graphics.setColor(1, 1, 1, 1)
-      elseif style == "italic" then
-        love.graphics.setColor(0.85, 0.85, 0.95, 1)
-      elseif style == "code" then
-        love.graphics.setColor(0.9, 0.9, 0.6, 1)
+        -- Force break long token to avoid overflow
+        local remaining = word
+        while #remaining > 0 do
+          local cut = 1
+          while cut <= #remaining do
+            local sub = remaining:sub(1, cut)
+            if font:getWidth(sub .. " ") > width - 8 and cut > 1 then
+              break
+            end
+            cut = cut + 1
+          end
+          if cut <= 1 then cut = 2 end
+          local piece = remaining:sub(1, cut - 1)
+          remaining = remaining:sub(cut)
+          ui.text(piece, cur_x, cur_y, font, seg_color)
+          if style == "bold" then ui.text(piece, cur_x + 1, cur_y, font, seg_color) end
+          cur_x = cur_x + font:getWidth(piece)
+          if cur_x >= x + width - 8 and #remaining > 0 then
+            cur_x = x
+            cur_y = cur_y + line_h
+          end
+        end
+        cur_x = cur_x + font:getWidth(" ")
       else
-        love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+        ui.text(word, cur_x, cur_y, font, seg_color)
+        if style == "bold" then
+          -- fake bold: draw again with 1px offset
+          ui.text(word, cur_x + 1, cur_y, font, seg_color)
+        end
+        cur_x = cur_x + font:getWidth(word .. " ")
       end
-      local seg_color = (style == "bold" and {1,1,1,1}) or (style == "italic" and {0.85,0.85,0.95,1}) or (style == "code" and {0.9,0.9,0.6,1}) or color
-      ui.text(word, cur_x, cur_y, font, seg_color)
-      if style == "bold" then
-        -- fake bold: draw again with 1px offset
-        ui.text(word, cur_x + 1, cur_y, font, seg_color)
-      end
-      cur_x = cur_x + font:getWidth(word .. " ")
       end
       -- newline within segment
       if part ~= parts[#parts] then
@@ -311,23 +324,11 @@ function messenger_screen:get_visible_chat_list()
     if self.list_kind == "filter" then
         return (self.tg.filter_chats or {})[self.list_filter_id] or {}
     end
-    -- Фильтруем каналы из основного списка чатов (посты из каналов не должны засорять список)
+    -- Возвращаем все чаты включая каналы и супергруппы-каналы
     local chats = self.tg.chats or {}
     local filtered = {}
     for _, chat in ipairs(chats) do
-        local t = chat.type
-        if t then
-            local is_channel = (t["@type"] == "chatTypeChannel")
-                or (t["@type"] == "chatTypeSupergroup" and t.is_channel == true)
-            -- Skip discussion/comment groups linked to a channel (auto-added when viewing reposts)
-            local linked = tonumber(chat.linked_chat_id) or 0
-            local is_discussion = (t["@type"] == "chatTypeSupergroup" and t.is_channel ~= true and linked ~= 0)
-            if not is_channel and not is_discussion then
-                filtered[#filtered + 1] = chat
-            end
-        else
-            filtered[#filtered + 1] = chat
-        end
+        filtered[#filtered + 1] = chat
     end
     return filtered
 end
@@ -420,15 +421,38 @@ function messenger_screen:update(dt)
         local doc = msg and msg.content and msg.content.document
         local file = doc and doc.document
         local fl = file and file["local"]
-        if fl and fl.is_downloading_completed and fl.path and fl.path ~= "" then
-            local lines = {}
-            local f = io.open(fl.path, "r")
-            if f then
-                for line in f:lines() do lines[#lines+1] = line end
-                f:close()
+        if fl then
+            -- Track download progress
+            if fl.size and fl.size > 0 then
+                self.text_preview.download_progress = fl.downloaded / fl.size
             end
-            self.text_preview.loading = false
-            self.text_preview.lines = lines
+            if fl.path and fl.path ~= "" and not self.text_preview.preview_lines then
+                local pf = io.open(fl.path, "r")
+                if pf then
+                    local plines = {}
+                    for i = 1, 10 do
+                        local l = pf:read("*l")
+                        if not l then break end
+                        plines[#plines + 1] = l
+                    end
+                    pf:close()
+                    if #plines > 0 then
+                        self.text_preview.preview_lines = plines
+                    end
+                end
+            end
+            if fl.is_downloading_completed and fl.path and fl.path ~= "" then
+                local lines = {}
+                local f = io.open(fl.path, "r")
+                if f then
+                    for line in f:lines() do lines[#lines + 1] = line end
+                    f:close()
+                end
+                self.text_preview.loading = false
+                self.text_preview.lines = lines
+                self.text_preview.download_progress = 1.0
+                self.text_preview.preview_lines = nil
+            end
         end
     end
     if self.tg.installed_sticker_sets_just_loaded and self.context_menu then
@@ -594,6 +618,7 @@ function messenger_screen:draw()
     self:draw_fullscreen_media(w, h)
     self:draw_sticker_pack(w, h)
     self:draw_text_preview(w, h)
+    self:draw_html_preview(w, h)
     self:draw_file_browser(w, h)
     self:draw_media_player(w, h)
     -- R2 pan mode indicator in fullscreen
@@ -714,7 +739,25 @@ function messenger_screen:draw_text_preview(w, h)
     end
     ui.text(ui.fit(title, f.subtitle, panel_w - 24), panel_x + 12, panel_y + 8, f.subtitle, colors.text)
     if tp.loading then
-        ui.text("Загрузка…", panel_x + 12, panel_y + 40, f.small, colors.muted)
+        local prog = tp.download_progress or 0
+        local pct = math.floor(prog * 100)
+        ui.text("Загрузка… " .. pct .. "%", panel_x + 12, panel_y + 40, f.small, colors.muted)
+        local bar_x, bar_y = panel_x + 12, panel_y + 56
+        local bar_w = panel_w - 24
+        ui.rect(bar_x, bar_y, bar_w, 6, colors.panel_alt, 3)
+        if prog > 0 then
+            ui.rect(bar_x, bar_y, math.floor(bar_w * prog), 6, colors.accent, 3)
+        end
+        local plines = tp.preview_lines or {}
+        if #plines > 0 then
+            ui.text("Предпросмотр:", panel_x + 12, panel_y + 72, f.tiny, colors.muted)
+            local y = panel_y + 88
+            local lh = f.tiny:getHeight() + 2
+            for i = 1, math.min(10, #plines) do
+                ui.text(ui.fit(plines[i] or "", f.tiny, panel_w - 24), panel_x + 12, y, f.tiny, colors.text)
+                y = y + lh
+            end
+        end
         return
     end
     local lines = tp.lines or {}
@@ -731,6 +774,207 @@ function messenger_screen:draw_text_preview(w, h)
     end
     love.graphics.setScissor()
     ui.text(string.format("%d/%d строк · ↑↓ листать · PgUp/PgDn · Esc/B закрыть", scroll + 1, math.max(1, #lines)),
+        panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
+end
+
+function messenger_screen:html_run_font(run, base)
+    local f = self.fonts
+    if run.code then return f.mono
+    elseif run.bold then return f.bold or base or f.normal
+    elseif run.italic then return f.italic or base or f.normal
+    else return base or f.normal end
+end
+
+-- Layout styled runs into wrapped lines. Returns list of lines, each = list of {text,font,color}.
+function messenger_screen:layout_html_runs(runs, content_w, block_style)
+    local f = self.fonts
+    local base = f.normal
+    if block_style == "h1" then base = f.title
+    elseif block_style == "h2" then base = f.subtitle end
+    local lines = {}
+    local cur_line = {}
+    local cur_x = 0
+    for _, run in ipairs(runs or {}) do
+        local font = self:html_run_font(run, base)
+        local text = run.text or ""
+        local pos = 1
+        while pos <= #text do
+            local remaining = content_w - cur_x
+            local lo, hi = pos, #text
+            local best = pos - 1
+            while lo <= hi do
+                local mid = math.floor((lo + hi) / 2)
+                if font:getWidth(text:sub(pos, mid)) <= remaining then best = mid; lo = mid + 1
+                else hi = mid - 1 end
+            end
+            if best < pos then
+                lines[#lines + 1] = cur_line
+                cur_line = {}
+                cur_x = 0
+                best = pos
+            end
+            local seg = text:sub(pos, best)
+            cur_line[#cur_line + 1] = { text = seg, font = font, color = run.color }
+            cur_x = cur_x + font:getWidth(seg)
+            pos = best + 1
+        end
+    end
+    if #cur_line > 0 then lines[#lines + 1] = cur_line end
+    if #lines == 0 then lines[1] = {} end
+    return lines
+end
+
+function messenger_screen:get_html_image(tp, b)
+    tp.images = tp.images or {}
+    if tp.images[b.src] ~= nil then return tp.images[b.src] or nil end
+    local src = b.src
+    local tmp
+    if src:match("^data:") then
+        local b64 = src:match("base64,(.+)")
+        if not b64 then tp.images[src] = false; return nil end
+        local ok, raw = pcall(love.data.decode, "base64", b64)
+        if not ok or not raw then tp.images[src] = false; return nil end
+        tmp = "/tmp/tg_html_" .. tostring(#src) .. "_" .. tostring(math.random(1, 1000000)) .. ".img"
+        local fh = io.open(tmp, "wb")
+        if not fh then tp.images[src] = false; return nil end
+        local str = (raw.getString and raw:getString()) or tostring(raw)
+        fh:write(str)
+        fh:close()
+    elseif src:match("^https?://") then
+        tmp = "/tmp/tg_html_" .. tostring(#src) .. "_" .. tostring(math.random(1, 1000000)) .. ".img"
+        local safe = src:gsub("'", "")
+        os.execute("curl -s --max-time 12 --socks5-hostname 127.0.0.1:10808 '" .. safe .. "' -o " .. tmp .. " 2>/dev/null")
+    else
+        tp.images[src] = false
+        return nil
+    end
+    local ok, img = pcall(love.graphics.newImage, tmp)
+    if ok and img then
+        tp.images[src] = img
+        return img
+    end
+    tp.images[src] = false
+    return nil
+end
+
+function messenger_screen:draw_html_preview(w, h)
+    local tp = self.html_preview
+    if not tp then return end
+    local f = self.fonts
+    local colors = ui.colors
+    love.graphics.setColor(0, 0, 0, 0.92)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    local panel_w = math.min(w - 32, 900)
+    local panel_h = math.min(h - 32, 620)
+    local panel_x = (w - panel_w) / 2
+    local panel_y = (h - panel_h) / 2
+    ui.rect(panel_x, panel_y, panel_w, panel_h, colors.panel, 8)
+    ui.outline(panel_x, panel_y, panel_w, panel_h, colors.accent, 8)
+    local title = "HTML файл"
+    if tp.path then
+        title = tp.path:match("([^/]+)$") or title
+    elseif tp.message and tp.message.content and tp.message.content.document then
+        title = tp.message.content.document.file_name or title
+    end
+    ui.text(ui.fit(title, f.subtitle, panel_w - 24), panel_x + 12, panel_y + 8, f.subtitle, colors.text)
+    if tp.loading then
+        local prog = tp.download_progress or 0
+        local pct = math.floor(prog * 100)
+        ui.text("Загрузка… " .. pct .. "%", panel_x + 12, panel_y + 40, f.small, colors.muted)
+        local bar_x, bar_y = panel_x + 12, panel_y + 56
+        local bar_w = panel_w - 24
+        ui.rect(bar_x, bar_y, bar_w, 6, colors.panel_alt, 3)
+        if prog > 0 then
+            ui.rect(bar_x, bar_y, math.floor(bar_w * prog), 6, colors.accent, 3)
+        end
+        return
+    end
+
+    local blocks = tp.blocks or {}
+    local line_h = f.normal:getHeight() + 6
+    local block_gap = 1  -- extra blank line between blocks
+    local content_x = panel_x + 20
+    local content_w = panel_w - 40
+    local view_h = panel_h - 52
+
+    -- Measure block heights (in lines)
+    local measured = {}
+    local total_lines = 0
+    for _, b in ipairs(blocks) do
+        if b.type == "image" then
+            local img = self:get_html_image(tp, b)
+            local lines_used
+            if img then
+                local scale = math.min(1, content_w / img:getWidth())
+                lines_used = math.max(1, math.ceil((img:getHeight() * scale + 10) / line_h)) + block_gap
+            else
+                lines_used = 1 + block_gap
+            end
+            measured[#measured + 1] = { block = b, lines = lines_used, img = img }
+            total_lines = total_lines + lines_used
+        elseif b.type == "hr" then
+            measured[#measured + 1] = { block = b, lines = 1 + block_gap }
+            total_lines = total_lines + 1 + block_gap
+        else
+            local lines = self:layout_html_runs(b.runs, content_w, b.style)
+            local used = math.max(1, #lines) + block_gap
+            measured[#measured + 1] = { block = b, lines = used, layout = lines }
+            total_lines = total_lines + used
+        end
+    end
+
+    local visible = math.max(1, math.floor(view_h / line_h))
+    local scroll = tp.scroll or 0
+    local max_scroll = math.max(0, total_lines - visible)
+    if scroll > max_scroll then scroll = max_scroll; tp.scroll = scroll end
+
+    love.graphics.setScissor(panel_x + 8, panel_y + 36, panel_w - 16, panel_h - 52)
+    local y = panel_y + 36 - scroll * line_h
+    local line_no = 0
+    for _, m in ipairs(measured) do
+        local b = m.block
+        local block_lines = m.lines
+        local block_h = block_lines * line_h
+        if line_no + block_lines >= scroll and line_no <= scroll + visible + 2 then
+            if b.type == "image" then
+                if m.img then
+                    local scale = math.min(1, content_w / m.img:getWidth())
+                    love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.draw(m.img, content_x, y, 0, scale, scale)
+                else
+                    ui.text("[изображение]", content_x, y, f.small, colors.muted)
+                end
+            elseif b.type == "hr" then
+                love.graphics.setColor(colors.muted)
+                love.graphics.line(content_x, y + line_h / 2, content_x + content_w, y + line_h / 2)
+            else
+                -- block background (bigger padding)
+                if b.bg then
+                    ui.rect(content_x - 12, y - 6, content_w + 24, block_h - 2, { b.bg[1], b.bg[2], b.bg[3] }, 8)
+                end
+                -- prefix for list/quote on first line
+                local prefix = (b.style == "li") and "• " or ((b.style == "quote") and "│ " or "")
+                local ly = y
+                for li, line in ipairs(m.layout) do
+                    local lx = content_x
+                    if li == 1 and prefix ~= "" then
+                        ui.text(prefix, lx, ly, f.normal, colors.accent)
+                        lx = lx + f.normal:getWidth(prefix)
+                    end
+                    for _, seg in ipairs(line) do
+                        local col = seg.color or b.color or ((b.style == "quote") and colors.muted or colors.text)
+                        ui.text(seg.text, lx, ly, seg.font, col)
+                        lx = lx + seg.font:getWidth(seg.text)
+                    end
+                    ly = ly + line_h
+                end
+            end
+        end
+        y = y + block_h
+        line_no = line_no + block_lines
+    end
+    love.graphics.setScissor()
+    ui.text(string.format("%d/%d · ↑↓ листать · PgUp/PgDn · Esc/B закрыть", scroll + 1, math.max(1, total_lines)),
         panel_x + 12, panel_y + panel_h - 18, f.tiny, colors.muted)
 end
 
@@ -1118,6 +1362,11 @@ function messenger_screen:context_menu_items(message)
     end
     if content_type == "messageDocument" then
         items[#items + 1] = {label = "Просмотреть текст", action = "preview_text"}
+        local doc = message.content and message.content.document
+        local mime = doc and doc.mime_type or ""
+        if mime == "text/html" or (doc and doc.file_name and doc.file_name:match("%.html?$")) then
+            items[#items + 1] = {label = "Просмотреть HTML", action = "preview_html"}
+        end
     end
 
     -- "Скачать в hi-res" — для фото загружает最高 разрешение
@@ -1643,6 +1892,7 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
     end
     local outgoing = self:outgoing(message)
     local text = self.tg:message_text(message)
+    local lines = {}
     local entities = (message and message.content and message.content.text and message.content.text.entities) or {}
     local sender_name = not outgoing and self.tg:sender_name(message) or nil
     local download_state = self.tg:media_download_state(message)
@@ -1710,7 +1960,8 @@ function messenger_screen:draw_message(message, area_x, y, area_w, height, max_b
         end
         bubble_w = image_width + padding * 2
     else
-        local _, lines = f.normal:getWrap(display_text, is_document and math.max(32, wrap_width - 28) or wrap_width)
+        local _, wrapped = f.normal:getWrap(display_text, is_document and math.max(32, wrap_width - 28) or wrap_width)
+        lines = wrapped
         local max_line = 0
         for _, line in ipairs(lines or {}) do
             local line_w = f.normal:getWidth(line)

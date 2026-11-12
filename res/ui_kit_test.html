@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>UI Kit Test</title>
+<style>
+    body { background: #0e1420; color: #e8eef5; font-family: sans-serif; }
+    .card { background: #1a2433; border-radius: 12px; padding: 16px; }
+    .accent { color: #3fa0e6; }
+    .warn { background: #3a2a10; color: #ffcc55; }
+</style>
+</head>
+<body>
+
+<h1>UI Kit — HTML Viewer Test</h1>
+<p>Это тестовый документ для проверки HTML-вьюера: <b>жирный</b>, <i>курсив</i>, <code>код</code>, <mark>выделение</mark>.</p>
+
+<hr>
+
+<h2 style="color:#3fa0e6">Цветные блоки</h2>
+
+<div style="background:#16222f; padding:14px; border-radius:10px">
+    <p style="color:#e8eef5">Обычный блок с фоном <span style="color:#4ade80">зелёный текст</span> и <span style="color:#f87171">красный текст</span>.</p>
+</div>
+
+<div style="background:#2a1a22; padding:14px; border-radius:10px">
+    <p style="color:#f0d0d8">Предупреждение: <b>важно</b> проверить настройки.</p>
+</div>
+
+<div style="background:#1a2a1a; padding:14px; border-radius:10px">
+    <p style="color:#c0f0c0">Успех: соединение установлено.</p>
+</div>
+
+<hr>
+
+<h2>Списки</h2>
+<ul>
+    <li>Первый пункт</li>
+    <li>Второй пункт с <b>жирным</b></li>
+    <li>Третий пункт с <code>code</code></li>
+</ul>
+
+<h2>Код</h2>
+<pre><code>local function hello(name)
+    print("Привет, " .. name)
+end</code></pre>
+
+<blockquote>Цитата: это текст цитаты, оформленный специальным образом.</blockquote>
+
+<hr>
+
+<h2>Таблица</h2>
+<table>
+    <tr><td><b>Имя</b></td><td><b>Значение</b></td></tr>
+    <tr><td>Тема</td><td>dark</td></tr>
+    <tr><td>Язык</td><td>Русский</td></tr>
+    <tr><td>Порт</td><td>10808</td></tr>
+</table>
+
+<hr>
+
+<h2>Изображение (data URI)</h2>
+<p>Тестовая картинка ниже должна загрузиться:</p>
+<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzNmYTBlNiIvPjx0ZXh0IHg9IjYwIiB5PSI1NSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SU0HPC90ZXh0Pjwvc3ZnPg==">
+
+<hr>
+
+<h2>Ссылки</h2>
+<p>Обычная <a href="https://example.com">ссылка на example.com</a> и <a href="https://telegram.org">Telegram</a>.</p>
+
+<p style="text-align:center; color:#3fa0e6">— Конец теста —</p>
+
+</body>
+</html>

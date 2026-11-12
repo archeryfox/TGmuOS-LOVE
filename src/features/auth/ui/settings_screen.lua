@@ -20,8 +20,10 @@ function settings_screen.new(fonts, tg, callbacks)
         account_scroll = 0,
         account_bounds = {},
         logout_confirm = false,
+        delete_confirm = false,
         vpn_restarting = false,
         vpn_spinner = 0,
+        vpn_enabled = true,
         tg_push_enabled = false,
     }
     return setmetatable(self, {__index = settings_screen})
@@ -59,7 +61,9 @@ items[#items + 1] = {id = "vsync"}
 items[#items + 1] = {id = "vibration_test"}
 items[#items + 1] = {id = "minimize"}
 items[#items + 1] = {id = "abxy"}
-    items[#items + 1] = {id = "vpn"}
+items[#items + 1] = {id = "show_mouse"}
+items[#items + 1] = {id = "refresh_messages"}
+items[#items + 1] = {id = "vpn"}
     items[#items + 1] = {id = "tg_push"}
     for _, account in ipairs(accounts) do
         items[#items + 1] = {id = "account:" .. account.key, account = account}
@@ -67,6 +71,7 @@ items[#items + 1] = {id = "abxy"}
     items[#items + 1] = {id = "add_account"}
     items[#items + 1] = {id = "update_github"}
     items[#items + 1] = {id = "logout"}
+    items[#items + 1] = {id = "delete_account"}
     return items
 end
 
@@ -114,8 +119,9 @@ function settings_screen:draw()
         local is_performance = item.id == "performance"
 local is_vsync = item.id == "vsync"
 local is_vibration_test = item.id == "vibration_test"
-local is_minimize = item.id == "minimize"
-local is_abxy = item.id == "abxy"
+        local is_minimize = item.id == "minimize"
+        local is_abxy = item.id == "abxy"
+        local is_show_mouse = item.id == "show_mouse"
         local is_vpn = item.id == "vpn"
         local is_tg_push = item.id == "tg_push"
         local is_account = item.id and item.id:match("^account:")
@@ -126,11 +132,13 @@ local is_abxy = item.id == "abxy"
         local is_profile = item.id == "profile"
         local is_theme = item.id == "theme"
         local is_wallpaper = item.id == "wallpaper"
+        local is_delete_account = item.id == "delete_account"
 
         local bg = selected and colors.accent or colors.panel_alt
         if is_exit then bg = selected and colors.red or colors.panel_alt end
         if is_logout then bg = selected and colors.red or colors.panel_alt end
         if self.vpn_restarting and is_vpn then bg = colors.panel_alt end
+        if is_delete_account then bg = selected and colors.red or colors.panel_alt end
 
         ui.rect(40, y, w - 80, item_h, bg, 8)
 
@@ -210,12 +218,18 @@ local is_abxy = item.id == "abxy"
         elseif is_abxy then
             local half_gap = 12
             local half_w = math.floor((w - 80 - half_gap) / 2)
-            local abxy_x = 40 + half_w + half_gap
+            local abxy_x = 40
             ui.text("Кнопки ABXY", abxy_x + 16, y + 7, f.normal, colors.text)
             ui.text(self:abxy_layout() == "retro" and "Retro" or "Modern",
                 abxy_x + half_w - 76, y + 7, f.small, colors.text)
             self.abxy_button = {x = abxy_x, y = y, w = half_w, h = item_h}
             ui.text("←/→ — переключить", 56, y + item_h + 1, f.tiny, colors.muted)
+        elseif is_show_mouse then
+            local ms = media_settings.get("show_mouse_cursor")
+            ui.text("Курсор мыши", 60, y + 7, f.normal, colors.text)
+            ui.text(ms and "Вкл" or "Выкл", w - 110, y + 7, f.small, ms and colors.green or colors.muted)
+            ui.text("←/→ — переключить", 60, y + item_h + 1, f.tiny, colors.muted)
+            self.show_mouse_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_vpn then
             if self.vpn_restarting then
                 -- White spinner on the right side
@@ -230,15 +244,25 @@ local is_abxy = item.id == "abxy"
                 ui.text("VPN перезапуск...", 60, y + 7, f.small, colors.text)
             else
                 local vpn_status = self.callbacks.get_vpn_status and self.callbacks.get_vpn_status() or "—"
+                local vpn_text = self.vpn_enabled and "Включено" or "Выключено"
+                local vpn_color = self.vpn_enabled and colors.green or colors.muted
                 ui.text("VPN / Прокси", 60, y + 7, f.normal, colors.text)
-                ui.text(vpn_status .. "   A — перезапустить", w - 180, y + 7, f.small, colors.muted)
+                ui.text(vpn_text .. "   ←/→ — переключить   A — перезапустить", w - 220, y + 7, f.small, vpn_color)
             end
             self.vpn_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif item.id == "refresh_messages" then
+            ui.text("Обновить сообщения", 60, y + 7, f.normal, colors.text)
+            ui.text("A — обновить", w - 130, y + 7, f.small, colors.muted)
+            self.refresh_messages_button = {x = 40, y = y, w = w - 80, h = item_h}
         elseif is_tg_push then
             ui.text("TG-push сервис", 60, y + 7, f.normal, colors.text)
             ui.text(self.tg_push_enabled and "Включен" or "Выключен", w - 130, y + 7, f.small, self.tg_push_enabled and colors.green or colors.muted)
             ui.text("←/→ — переключить", 60, y + item_h + 1, f.tiny, colors.muted)
             self.tg_push_button = {x = 40, y = y, w = w - 80, h = item_h}
+        elseif item.id == "delete_account" then
+            local del_label = self.delete_confirm and "Подтвердить удаление аккаунта" or "Удалить аккаунт"
+            ui.text(del_label, 54, y + 7, f.small, colors.text)
+            self.delete_account_button = {x = 40, y = y, w = w - 80, h = 34}
         elseif is_account then
             local account = item.account
             ui.text(ui.fit(account.title or "Аккаунт", f.small, w - 190), 54, y + 2, f.small, colors.text)
@@ -354,6 +378,18 @@ function settings_screen:activate_item(item)
         end
     elseif item.id == "abxy" then
         self:toggle_abxy()
+    elseif item.id == "refresh_messages" then
+        if self.tg and self.tg.current_chat_id then
+            self.tg.action_status = "Обновление сообщений..."
+            if self.tg.open_chat then
+                self.tg:open_chat(self.tg.current_chat_id)
+            end
+        elseif self.tg then
+            self.tg.action_status = "Обновление чатов..."
+            if self.tg.send then
+                self.tg:send({["@type"] = "getChats", chat_list = {["@type"] = "chatListMain"}, limit = 100}, "loadChats")
+            end
+        end
     elseif item.id == "vpn" then
         if not self.vpn_restarting and self.callbacks.restart_vpn then
             self.vpn_restarting = true
@@ -398,9 +434,16 @@ function settings_screen:keypressed(key)
     local is_scale_selected = selected and selected.id == "scale"
     local is_performance_selected = selected and selected.id == "performance"
     local is_vsync_selected = selected and selected.id == "vsync"
+    local is_vibration_selected = selected and selected.id == "vibration_test"
+    local is_minimize_selected = selected and selected.id == "minimize"
+    local is_profile_selected = selected and selected.id == "profile"
+    local is_theme_selected = selected and selected.id == "theme"
+    local is_wallpaper_selected = selected and selected.id == "wallpaper"
     local is_abxy_selected = selected and selected.id == "abxy"
+    local is_show_mouse_selected = selected and selected.id == "show_mouse"
     local is_vpn_selected = selected and selected.id == "vpn"
     local is_tg_push_selected = selected and selected.id == "tg_push"
+    local is_delete_selected = selected and selected.id == "delete_account"
 
     if key == "up" or key == "down" then
         local direction = key == "down" and 1 or -1
@@ -441,12 +484,19 @@ function settings_screen:keypressed(key)
             performance.toggle_vsync()
         elseif is_abxy_selected then
             self:toggle_abxy()
-        elseif is_vpn_selected and not self.vpn_restarting and self.callbacks.restart_vpn then
-            self.vpn_restarting = true
-            self.vpn_spinner = 0
-            self.callbacks.restart_vpn(function()
-                self.vpn_restarting = false
-            end)
+        elseif is_show_mouse_selected then
+            media_settings.toggle("show_mouse_cursor")
+            media_settings.save()
+            if love.mouse then
+                if media_settings.get("show_mouse_cursor") then love.mouse.setVisible(true) else love.mouse.setVisible(false) end
+            end
+        elseif is_vpn_selected then
+            if key == "left" or key == "right" then
+                self.vpn_enabled = not self.vpn_enabled
+                if self.callbacks.set_vpn_enabled then
+                    self.callbacks.set_vpn_enabled(self.vpn_enabled)
+                end
+            end
         elseif is_tg_push_selected then
             self.tg_push_enabled = not self.tg_push_enabled
             if self.callbacks.set_tg_push then
@@ -482,6 +532,19 @@ function settings_screen:keypressed(key)
             performance.toggle_vsync()
         elseif is_abxy_selected then
             self:toggle_abxy()
+        elseif is_delete_selected then
+            if self.delete_confirm then
+                if self.callbacks.delete_account then
+                    local key = nil
+                    if self.tg and self.tg.active_account_key then
+                        key = self.tg.active_account_key
+                    end
+                    self.callbacks.delete_account(key)
+                end
+                self.delete_confirm = false
+            else
+                self.delete_confirm = true
+            end
         else
             self:activate_item(items[self.selected_item])
         end
@@ -552,22 +615,39 @@ function settings_screen:mousepressed(x, y, button)
                     love.window.minimize()
                     self.tg.action_status = "Приложение свёрнуто"
                 end
-            elseif item.id == "update_github" then
-            ui.text("Скачать обновление с Github", 60, y + 7, f.normal, colors.text)
-            ui.text("Версия: " .. (settings_update_version or "—"), w - 180, y + 7, f.small, colors.muted)
-            self.update_button = {x = 40, y = y, w = w - 80, h = item_h}
-        elseif item.id == "abxy" then
+            elseif item.id == "show_mouse" then
+                media_settings.toggle("show_mouse_cursor")
+                media_settings.save()
+                if love.mouse then
+                    if media_settings.get("show_mouse_cursor") then love.mouse.setVisible(true) else love.mouse.setVisible(false) end
+                end
+            elseif item.id == "abxy" then
                 self:toggle_abxy()
-            elseif item.id == "vpn" and not self.vpn_restarting and self.callbacks.restart_vpn then
-                self.vpn_restarting = true
-                self.vpn_spinner = 0
-                self.callbacks.restart_vpn(function()
-                    self.vpn_restarting = false
-                end)
+            elseif item.id == "vpn" then
+                if not self.vpn_restarting and self.callbacks.restart_vpn then
+                    self.vpn_restarting = true
+                    self.vpn_spinner = 0
+                    self.callbacks.restart_vpn(function()
+                        self.vpn_restarting = false
+                    end)
+                end
             elseif item.id == "tg_push" then
                 self.tg_push_enabled = not self.tg_push_enabled
                 if self.callbacks.set_tg_push then
                     self.callbacks.set_tg_push(self.tg_push_enabled)
+                end
+            elseif item.id == "delete_account" then
+                if self.delete_confirm then
+                    if self.callbacks.delete_account then
+                        local key = nil
+                        if self.tg and self.tg.active_account_key then
+                            key = self.tg.active_account_key
+                        end
+                        self.callbacks.delete_account(key)
+                    end
+                    self.delete_confirm = false
+                else
+                    self.delete_confirm = true
                 end
             end
             return
@@ -575,6 +655,7 @@ function settings_screen:mousepressed(x, y, button)
     end
 
     if self.logout_confirm then self.logout_confirm = false end
+    if self.delete_confirm then self.delete_confirm = false end
 end
 
 function settings_screen:textinput() end

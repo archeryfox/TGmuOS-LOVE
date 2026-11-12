@@ -92,7 +92,24 @@ function context_menu_handler.activate_context_item(ms, cm, item)
                 end
             end
         end
-    elseif item.action == "open_sticker_pack" then
+    elseif item.action == "preview_html" then
+        if cm.message then
+            local doc = cm.message.content and cm.message.content.document
+            local file = doc and doc.document
+            ms.html_preview = {loading = true, lines = {}, scroll = 0, message = cm.message, file_id = file and file.id}
+            if file and file.id then
+                -- trigger download
+                if not (file["local"] and file["local"].is_downloading_completed) then
+                    ms.tg:send({["@type"] = "downloadFile", file_id = file.id, priority = 32, offset = 0, limit = 0, synchronous = false}, "html_preview:" .. tostring(file.id))
+                else
+                    -- already downloaded; read immediately
+                    local path = file["local"].path
+                    if path then
+                        ms:open_html_preview(path)
+                    end
+                end
+            end
+        end
         if ms.tg.open_sticker_set then
             ms.tg:open_sticker_set(cm.message)
         end

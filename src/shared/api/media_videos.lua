@@ -1,6 +1,8 @@
 -- src/shared/api/media_videos.lua
 -- Video handling extracted from media_methods.lua
 
+local media_settings = require("src.shared.system.media_settings")
+
 return function(telegram)
     local function diag(message)
         local handle = io.open("log.txt", "a")
@@ -104,13 +106,12 @@ return function(telegram)
             if not extra then
                 return nil
             end
-            entry = {status = "downloading", duration = tonumber(duration), autoplay = true}
+            entry = {status = "downloading", duration = tonumber(duration), autoplay = media_settings.get("autoplay_videos")}
             self.videos[file_id] = entry
             self.video_by_message[message.id] = file_id
         elseif not entry.duration and tonumber(duration) then
             entry.duration = tonumber(duration)
         end
-        if entry then entry.autoplay = false end
         return entry
     end
 

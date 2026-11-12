@@ -2,6 +2,15 @@ local json = require("dkjson")
 local HISTORY_PAGE_SIZE = 50
 local MAX_MESSAGES_PER_CHAT = 500
 
+local function log_to_file(self, message)
+    if type(self.log_to_file) == "function" then
+        return self:log_to_file(message)
+    end
+    if type(message) == "string" then
+        print("[MSG] " .. message)
+    end
+end
+
 local function prune_messages(chat_id, self_ref)
     local list = self_ref.messages[chat_id]
     if not list or #list <= MAX_MESSAGES_PER_CHAT then return end
@@ -87,6 +96,7 @@ return function(telegram)
                 ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] = ".docx",
                 ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = ".xlsx",
                 ["text/plain"] = ".txt",
+                ["text/html"] = ".html",
                 ["audio/mpeg"] = ".mp3",
                 ["audio/mp3"] = ".mp3",
                 ["audio/mp4"] = ".m4a",
@@ -147,23 +157,17 @@ return function(telegram)
             has_more = true,
             generation = 1,
         }
-        local chat = self.chats_by_id[chat_id] or self.archive_chats_by_id[chat_id]
-        local last = chat and chat.last_message
-        self.messages[chat_id] = last and {last} or {}
-        if last then
-            self:ensure_photo(last)
-            self:ensure_sticker(last)
-            self:ensure_animation(last)
-            self:ensure_video(last)
-            self:ensure_voice_note(last)
-            self:ensure_audio(last)
-            self:ensure_video_note(last)
-        end
+        -- Start empty: history below (from_message_id=0) loads the actual latest
+        -- messages, avoiding stale cached last_message that caused old messages.
+        self.messages[chat_id] = {}
         self:send({["@type"] = "openChat", chat_id = chat_id})
+        -- Refresh chat info so last_message is current (cache may be stale)
+        self:send({["@type"] = "getChat", chat_id = chat_id}, "getChat:" .. tostring(chat_id))
         self:send({
             ["@type"] = "getChatHistory",
             chat_id = chat_id,
-            from_message_id = last and last.id or 0,
+            -- 0 = start from the most recent message (avoids stale cached last_message)
+            from_message_id = 0,
             offset = 0,
             limit = HISTORY_PAGE_SIZE,
             only_local = false,
@@ -212,13 +216,13 @@ return function(telegram)
         local file_id = file and file.id
         if not file_id then return end
         -- Ensure the sticker file is downloaded locally first
-        local fl = file["local"] or {}
+        local fl = file["local"] or (file.file and file.file["local"]) or {}
         if not (fl.is_downloading_completed and fl.path and fl.path ~= "") then
             self.pending_sticker_send = {chat_id = chat_id, sticker = sticker}
             self:load_sticker_file(file)
             return
         end
-        local fl = file["local"] or {}
+        local fl = file["local"] or (file.file and file.file["local"]) or {}
         local input_file
         if fl.is_downloading_completed and fl.path and fl.path ~= "" then
             local sz = 0
@@ -538,8 +542,10 @@ return function(telegram)
 
     function telegram:handle_new_message(message)
         if not message or not message.chat_id then
+            log_to_file(self, "handle_new_message: rejected - missing message or chat_id")
             return
         end
+        log_to_file(self, "handle_new_message: chat_id=" .. tostring(message.chat_id) .. " current_chat_id=" .. tostring(self.current_chat_id) .. " msg_id=" .. tostring(message.id))
         if message.sender_id and message.sender_id["@type"] == "messageSenderUser" then
             self:ensure_user(message.sender_id.user_id)
             self:ensure_user_photo(message.sender_id.user_id)
@@ -587,6 +593,7 @@ return function(telegram)
                 return (a.id or 0) < (b.id or 0)
             end)
             self.messages[message.chat_id] = list
+            log_to_file(self, "handle_new_message: added msg_id=" .. tostring(message.id) .. " to chat_id=" .. tostring(message.chat_id) .. " list_size=" .. tostring(#list))
             prune_messages(message.chat_id, self)
             self:mark_chat_viewed(message.chat_id, {message})
         end

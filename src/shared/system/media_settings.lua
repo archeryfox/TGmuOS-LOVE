@@ -8,6 +8,7 @@ local settings = {
     autoplay_images = true,
     autoplay_circles = false,
     autoload = true,
+    show_mouse_cursor = true,
 }
 
 local function clamp(v) return v == true end

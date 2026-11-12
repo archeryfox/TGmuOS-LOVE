@@ -67,11 +67,8 @@ local ffprobe = which("ffprobe")
 local lottie_converter = os.getenv("LOTTIE_CONVERTER")
     or which("lottie_convert.py")
     or which("lottie_convert")
-local home = os.getenv("HOME")
-if not lottie_converter and home and home ~= "" then
-    local user_converter = home .. "/.local/bin/lottie_convert.py"
-    if file_exists(user_converter) then lottie_converter = user_converter end
-end
+    or (os.getenv("HOME") and (os.getenv("HOME") .. "/.local/bin/lottie_convert.py") and file_exists(os.getenv("HOME") .. "/.local/bin/lottie_convert.py") and (os.getenv("HOME") .. "/.local/bin/lottie_convert.py"))
+    or "/home/kyle/.local/bin/lottie_convert.py"
 local clean_env = "env -u LD_LIBRARY_PATH "
 
 local function probe(path)

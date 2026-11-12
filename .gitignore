@@ -20,3 +20,15 @@ data/
 *.log
 .obsidian/
 lib/love_11.5/
+
+# Runtime log
+log.txt
+
+# Private VPN/proxy configs (never commit)
+config/
+
+# Local planning notes
+plans/
+
+# Rust tool build artifacts
+tools/screen-editor/target/

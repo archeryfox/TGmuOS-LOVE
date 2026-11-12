@@ -3,6 +3,7 @@ _G.BACKGROUND_MODE = false
 for _, a in ipairs(arg or {}) do
     if a == "--background-notification" then _G.BACKGROUND_MODE = true end
 end
+local media_settings = require("src.shared.system.media_settings")
 local ui = require("src.shared.ui.ui_kit")
 local json = require("dkjson")
 local telegram = require("src.shared.api.tdlib_client")
@@ -47,6 +48,7 @@ local function save_theme(name)
 end
 
 local wallpaper_enabled = false
+local vpn_enabled = true
 local function load_wallpaper()
     local handle = io.open("wallpaper.conf", "r")
     if handle then
@@ -325,6 +327,32 @@ local function next_account_key()
     return key
 end
 
+local function delete_account(key)
+    if not key or key == "" then return end
+    local accounts = account_store.accounts
+    local idx = nil
+    for i, acc in ipairs(accounts) do
+        if acc.key == key then idx = i; break end
+    end
+    if not idx then return end
+    -- Log out from TDLib (destroys DB via authorizationStateClosed handler)
+    if tg and tg.log_out then tg:log_out() end
+    table.remove(accounts, idx)
+    if account_store.active_key == key then
+        if #accounts > 0 then
+            account_store.active_key = accounts[1].key
+        else
+            -- create default empty account
+            account_store.accounts[1] = {key = "account_1", title = "Основной аккаунт", authorized = false}
+            account_store.active_key = "account_1"
+        end
+    end
+    save_account_store()
+    if #accounts == 0 or account_store.active_key ~= key then
+        pending_account_key = account_store.active_key
+    end
+end
+
 local function start_account(key)
     key = key or account_store.active_key
     account_store.active_key = key
@@ -437,8 +465,15 @@ function love.load()
     fonts = ui.load_fonts(settings_scale)
     load_theme()
     load_wallpaper()
-    love.mouse.setVisible(true)
-    love.mouse.setRelativeMode(false)
+    media_settings.load()
+    if love.mouse then
+        if media_settings.get("show_mouse_cursor") then
+            love.mouse.setVisible(true)
+        else
+            love.mouse.setVisible(false)
+        end
+        love.mouse.setRelativeMode(false)
+    end
     last_mouse_move = love.timer.getTime()
 
     load_account_store()
@@ -455,10 +490,16 @@ function love.load()
         script = "/mnt/mmc/MUOS/application/muvpn_love/muvpn.py",
     })
 
-    screens = {
+    -- Auto-start sing-box if VPN enabled (default ON)
+    if vpn_enabled then
+        os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
+    end
+
+        screens = {
         auth = auth_screen.new(fonts, tg, {
             accounts = function() return account_store.accounts, account_store.active_key end,
             switch_account = function(key) pending_account_key = key end,
+            delete_account = function(key) delete_account(key) end,
             restart_account = function()
                 -- Abandon current auth attempt: clear the account db and restart fresh
                 local key = account_store.active_key
@@ -471,6 +512,12 @@ function love.load()
                 save_account_store()
                 pending_account_key = key
             end,
+            restart_vpn = function(callback)
+                os.execute('pkill -9 sing-box 2>/dev/null')
+                if tg then tg.proxy_confirmed = false; tg.proxy_ready = false end
+                os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
+                if callback then callback() end
+            end,
         }),
         messenger = messenger_screen.new(fonts, tg),
         profile = profile_screen.new(fonts, tg),
@@ -478,6 +525,7 @@ function love.load()
             accounts = function() return account_store.accounts, account_store.active_key end,
             switch_account = function(key) pending_account_key = key end,
             add_account = function() pending_account_key = next_account_key() end,
+            delete_account = function(key) delete_account(key) end,
             open_profile = function() show_profile(tg.current_chat_id, tg.me and tg.me.id) end,
             abxy_layout = function() return ABXY_LAYOUT end,
             toggle_abxy = toggle_abxy,
@@ -488,15 +536,26 @@ function love.load()
                 save_wallpaper(wallpaper_enabled)
             end,
             cycle_theme = function()
-                local order = {"dark", "light", "redwine", "bluemoon", "xmas", "hackers", "violet"}
-                local cur = ui.current_theme or "dark"
+                local order = {"dark", "light", "redwine"}
+                local cur = (ui and ui.current_theme) or "dark"
                 local idx = 1
                 for i, n in ipairs(order) do if n == cur then idx = i; break end end
                 idx = (idx % #order) + 1
-                ui.set_theme(order[idx])
+                if ui and type(ui.set_theme) == "function" then
+                    ui.set_theme(order[idx])
+                end
                 save_theme(order[idx])
             end,
             restart_vpn = function(callback)
+                if not vpn_enabled then
+                    os.execute('pkill -9 sing-box 2>/dev/null')
+                    if tg then
+                        tg.proxy_confirmed = false
+                        tg.proxy_ready = false
+                    end
+                    if callback then callback() end
+                    return
+                end
                 os.execute('pkill -9 sing-box 2>/dev/null')
                 -- Reset TDLib proxy state so it re-confirms with the new sing-box instance
                 if tg then
@@ -516,6 +575,19 @@ function love.load()
                     return snap.status.connected and "Включен" or "Выключен"
                 end
                 return "Неизвестно"
+            end,
+            set_vpn_enabled = function(enabled)
+                vpn_enabled = enabled
+                if enabled then
+                    os.execute('pkill -9 sing-box 2>/dev/null')
+                    os.execute('ulimit -n 65536; nohup /mnt/mmc/MUOS/application/muvpn_love/libexec/sing-box run -c /root/.config/muvpn/sing-box.json >/dev/null 2>&1 &')
+                else
+                    os.execute('pkill -9 sing-box 2>/dev/null')
+                end
+                if tg then
+                    tg.proxy_confirmed = false
+                    tg.proxy_ready = false
+                end
             end,
             open_profile = function() show_my_profile() end,
         }),
@@ -543,6 +615,7 @@ function love.update(dt)
             accounts = function() return account_store.accounts, account_store.active_key end,
             switch_account = function(k) pending_account_key = k end,
             add_account = function() pending_account_key = next_account_key() end,
+            delete_account = function(key) delete_account(key) end,
             open_profile = function() show_profile(tg.current_chat_id, tg.me and tg.me.id) end,
             abxy_layout = function() return ABXY_LAYOUT end,
             toggle_abxy = toggle_abxy,
@@ -590,7 +663,9 @@ current = screens.auth
     end
     if tg.ready and tg.installed_sticker_sets == nil then
         tg.installed_sticker_sets = {}
-        tg:load_installed_sticker_sets()
+        if type(tg.load_installed_sticker_sets) == "function" then
+            tg:load_installed_sticker_sets()
+        end
     end
 
     if settings_open then
@@ -633,6 +708,15 @@ current = screens.auth
         end
     end
 
+    -- update mouse visibility from settings
+    if love.mouse and media_settings then
+        if media_settings.get("show_mouse_cursor") then
+            love.mouse.setVisible(true)
+        else
+            love.mouse.setVisible(false)
+        end
+    end
+
     local held_dir = nil
     for _, direction in ipairs({"up", "down", "left", "right"}) do
         if dir_state[direction] then held_dir = direction break end
@@ -667,11 +751,13 @@ end
 function love.draw()
     if current and current.draw then current:draw() end
     -- Global mouse cursor icon
-    local mx, my = love.mouse.getPosition()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.polygon("fill", mx, my, mx + 12, my + 4, mx + 4, my + 12)
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.polygon("line", mx, my, mx + 12, my + 4, mx + 4, my + 12)
+    if love.mouse and media_settings and media_settings.get("show_mouse_cursor") then
+        local mx, my = love.mouse.getPosition()
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.polygon("fill", mx, my, mx + 12, my + 4, mx + 4, my + 12)
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.polygon("line", mx, my, mx + 12, my + 4, mx + 4, my + 12)
+    end
 end
 
 handle_key = function(key, from_gamepad)
@@ -993,5 +1079,7 @@ end
 
 function love.mousemoved(x, y, dx, dy)
     last_mouse_move = love.timer.getTime()
-    love.mouse.setVisible(true)
+    if love.mouse and media_settings and media_settings.get("show_mouse_cursor") then
+        love.mouse.setVisible(true)
+    end
 end

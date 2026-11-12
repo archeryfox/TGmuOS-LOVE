@@ -334,7 +334,7 @@ function telegram:push_notification(notice)
     if not self.notifications_enabled then return end
     self.notifications = self.notifications or {}
     self.active_downloads = self.active_downloads or 0
-    self.max_concurrent_downloads = 3
+    self.max_concurrent_downloads = 6
     self.download_queue = self.download_queue or {}
     for index = #self.notifications, 1, -1 do
         if self.notifications[index].chat_id == notice.chat_id then
@@ -503,6 +503,7 @@ function telegram:handle(object)
             chat.unread_count = object.unread_count or 0
         end
     elseif kind == "updateNewMessage" then
+        log_to_file(self, "TDLib: received updateNewMessage chat_id=" .. tostring(object.message and object.message.chat_id or "nil"))
         self:handle_new_message(object.message)
     elseif kind == "updateMessageSendSucceeded" then
         self:handle_send_succeeded(object)
@@ -661,9 +662,9 @@ function telegram:handle(object)
         local qr_query_in_progress = extra == "qr"
             and message:find("Another authorization query has started", 1, true) ~= nil
         if object.code == 400 and extra == "tdlib_params"
-            and self.tdlib_parameters_nested
-            and message:find("Parameters aren't specified", 1, true) then
+            and self.tdlib_parameters_nested then
             self.tdlib_parameters_nested = false
+            log_to_file(self, "TDLib: retrying setTdlibParameters with flat schema")
             self:send_tdlib_parameters()
             return
         end
@@ -863,7 +864,7 @@ function telegram:handle_file(file)
             end
             -- Text preview: read file when downloaded
             if self.text_preview and self.text_preview.loading then
-                local file_local0 = file["local"] or {}
+                local file_local0 = file["local"] or (file.file and file.file["local"]) or {}
                 if file_local0.is_downloading_completed and file_local0.path and file_local0.path ~= "" then
                     local lines = {}
                     local fh = io.open(file_local0.path, "r")
@@ -873,6 +874,32 @@ function telegram:handle_file(file)
                     end
                     self.text_preview.loading = false
                     self.text_preview.lines = lines
+                end
+            end
+            -- HTML preview: read file when downloaded
+            if self.html_preview and self.html_preview.loading then
+                local file_local0 = file["local"] or (file.file and file.file["local"]) or {}
+                if file_local0.is_downloading_completed and file_local0.path and file_local0.path ~= "" then
+                    local html_render = require("src.shared.api.html_render")
+                    local fh = io.open(file_local0.path, "r")
+                    local html = ""
+                    if fh then
+                        html = fh:read("*a") or ""
+                        fh:close()
+                    end
+                    local blocks = html_render.parse(html)
+                    local lines = {}
+                    for _, b in ipairs(blocks) do
+                        if b.type == "text" then
+                            local line = ""
+                            for _, r in ipairs(b.runs or {}) do line = line .. r.text end
+                            lines[#lines + 1] = line
+                        end
+                    end
+                    self.html_preview.loading = false
+                    self.html_preview.blocks = blocks
+                    self.html_preview.lines = lines
+                    self.html_preview.images = {}
                 end
             end
         end
@@ -1063,7 +1090,7 @@ end
 function telegram:load_sticker_file(file)
     if not file or not file.id then return end
     local file_id = file.id
-    local fl = file["local"] or {}
+    local fl = file["local"] or (file.file and file.file["local"]) or {}
     local entry = self.stickers[file_id]
     if not entry then
         entry = {status = "remote", format = self.sticker_format_by_file[file_id], autoplay = false}

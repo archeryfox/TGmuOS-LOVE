@@ -88,7 +88,7 @@ return function(telegram)
                 " -vf scale=128:128:force_original_aspect_ratio=decrease -frames:v 1 -pix_fmt rgba -f image2 " .. quoted_output .. " 2>/dev/null")
         end
         if fmt == "tgs" then
-            local lottie = "lottie_convert.py"
+            local lottie = os.getenv("LOTTIE_CONVERTER") or ((os.getenv("HOME") or "/home/kyle") .. "/.local/bin/lottie_convert.py")
             table.insert(converters,
                 clean_env .. lottie .. " --frame 0 " .. quoted_input .. " " .. quoted_output .. " 2>/dev/null")
             local gif_path = save_dir .. "/conv_" .. tostring(next_convert_idx) .. ".gif"
@@ -203,7 +203,7 @@ return function(telegram)
 
         local converters = {}
         if fmt == "tgs" then
-            local lottie = "lottie_convert.py"
+            local lottie = os.getenv("LOTTIE_CONVERTER") or ((os.getenv("HOME") or "/home/kyle") .. "/.local/bin/lottie_convert.py")
             table.insert(converters, clean_env .. lottie .. " " .. quoted_input .. " " .. quoted_gif .. " 2>/dev/null")
         elseif fmt == "video" then
             table.insert(converters, clean_env .. "ffmpeg -y -v error -threads 1 -i " .. quoted_input .. " " .. quoted_gif .. " 2>/dev/null")
